@@ -104,14 +104,14 @@ under the License.
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-compat</artifactId>
-      <version>${maven.version}</version>
+      <version>${mavenVersion}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
 
   <profiles>
     <profile>
-      <id>run-its</id>
+      <id>its</id>
       <build>
         <plugins>
           <plugin>
