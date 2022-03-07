@@ -21,6 +21,7 @@ package dev.sigstore.plugin;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Path;
 
 import org.immutables.value.Value;
 
@@ -30,35 +31,74 @@ import org.immutables.value.Value;
 @Value.Immutable
 public abstract class SigstoreRequest
 {
-    public abstract File artifact();
+    public abstract Path artifact();
 
-    public abstract File outputSignedJar();
+    public abstract Path outputSignedJar();
 
-    public abstract File outputSigningCert();
+    @Value.Derived
+    public Path outputSigningCert() {
+        return artifact().resolveSibling( artifact().getFileName().toString() + ".pem" );
+    }
 
-    public abstract String signerName();
+    @Value.Default
+    public String signerName() {
+        return "sigstore";
+    }
 
-    public abstract String signingAlgorithm();
+    @Value.Default
+    public String signingAlgorithm() {
+        return "EC";
+    }
 
-    public abstract String signingAlgorithmSpec();
+    @Value.Default
+    public String signingAlgorithmSpec() {
+        return "secp256r1";
+    }
 
-    public abstract boolean sslVerfication();
+    @Value.Default
+    public boolean sslVerfication() {
+        return true;
+    }
 
-    public abstract URL fulcioInstanceURL();
+    @Value.Default
+    public String fulcioInstanceURL() {
+        return "https://fulcio.sigstore.dev";
+    }
 
-    public abstract boolean oidcDeviceCodeFlow();
+    @Value.Default
+    public boolean oidcDeviceCodeFlow() {
+        return false;
+    }
 
-    public abstract String oidcClientID();
+    @Value.Default
+    public String oidcClientID() {
+        return "sigstore";
+    }
 
-    public abstract URL oidcAuthURL();
+    @Value.Default
+    public String oidcAuthURL() {
+        return "https://oauth2.sigstore.dev/auth/auth";
+    }
 
-    public abstract URL oidcTokenURL();
+    @Value.Default
+    public String oidcTokenURL() {
+        return "https://oauth2.sigstore.dev/auth/token";
+    }
 
-    public abstract URL oidcDeviceCodeURL();
+    @Value.Default
+    public String oidcDeviceCodeURL() {
+        return "https://oauth2.sigstore.dev/auth/device/code";
+    }
 
-    public abstract URL rekorInstanceURL();
+    @Value.Default
+    public String rekorInstanceURL() {
+        return  "https://rekor.sigstore.dev";
+    }
 
     public abstract String emailAddress();
 
-    public abstract URL tsaURL();
+    @Value.Default
+    public String tsaURL() {
+        return "https://rekor.sigstore.dev/api/v1/timestamp";
+    }
 }

@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InvalidObjectException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -76,6 +77,12 @@ import org.apache.maven.shared.jarsigner.JarSignerUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// TODO:
+// sha256 is incorrect and doesn't verify, as it's the sha256 of the signed JAR
+// signature is a signed JAR file and not an actual signature
+// http://tutorials.jenkov.com/java-cryptography/signature.html
+// https://www.veracode.com/blog/research/digital-signatures-using-java
+
 /**
  * Sign
  */
@@ -88,7 +95,14 @@ public class Sign
 
     public static void main( String[] args ) throws Exception
     {
+        SigstoreRequest r = ImmutableSigstoreRequest.builder()
+                .emailAddress( "jason@vanzyl.ca" )
+                .artifact( Paths.get("/Users/jvanzyl/js/provisio/maven-sigstore/maven-sigstore-plugin/target/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar") )
+                .outputSignedJar( Paths.get("/Users/jvanzyl/js/provisio/maven-sigstore/maven-sigstore-plugin/target/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar.signed" ) )
+                .build();
 
+        Sign signer = new Sign(r);
+        signer.executeSigstoreFlow();
     }
 
     public Sign( SigstoreRequest request )
@@ -114,7 +128,7 @@ public class Sign
         byte[] jarBytes = signJarFile( keypair.getPrivate(), certs );
 
         // write signing certificate to file
-        writeSigningCertToFile( certs, r.outputSigningCert() );
+        writeSigningCertToFile( certs, r.outputSigningCert().toFile() );
 
         // submit jar to rekor
         submitToRekor( jarBytes );
@@ -381,14 +395,14 @@ public class Sign
         // sign JAR using keypair
         try
         {
-            File jarToSign = r.artifact();
+            File jarToSign = r.artifact().toFile();
             LOGGER.info( "signing JAR file " + jarToSign.getAbsolutePath() );
 
             File outputJarFile;
             Boolean overwrite = true;
             if ( r.outputSignedJar() != null )
             {
-                outputJarFile = r.outputSignedJar();
+                outputJarFile = r.outputSignedJar().toFile();
                 overwrite = false;
             }
             else
@@ -399,6 +413,7 @@ public class Sign
 
             BiConsumer<String, String> progressLogger = ( op, entryName ) -> LOGGER
                     .debug( String.format( "%s %s", op, entryName ) );
+
             JarSigner.Builder jsb = new JarSigner.Builder( privKey, certs ).digestAlgorithm( "SHA-256" )
                     .signatureAlgorithm( "SHA256withECDSA" ).setProperty( "internalsf", "true" )
                     .signerName( r.signerName() )
@@ -406,7 +421,7 @@ public class Sign
 
             if ( r.tsaURL().toString().equals( "" ) )
             {
-                jsb = jsb.tsa( r.tsaURL().toURI() );
+                jsb = jsb.tsa( new URL(r.tsaURL()).toURI() );
             }
 
             JarSigner js = jsb.build();
@@ -429,8 +444,8 @@ public class Sign
                 }
                 else
                 {
-                    LOGGER.info( "wrote signed JAR to " + r.outputSignedJar().getAbsolutePath() );
-                    if ( !JarSignerUtil.isArchiveSigned( r.outputSignedJar() ) )
+                    LOGGER.info( "wrote signed JAR to " + r.outputSignedJar().toString() );
+                    if ( !JarSignerUtil.isArchiveSigned( r.outputSignedJar().toFile() ) )
                     {
                         throw new VerifyError( "JAR signing verification failed" );
                     }
@@ -501,7 +516,7 @@ public class Sign
             Map<String, Object> specContent = new HashMap<>();
             Map<String, Object> archiveContent = new HashMap<>();
             archiveContent.put( "content", jarB64 );
-            specContent.put( "archive", archiveContent );
+            specContent.put( "data", archiveContent );
 
             rekorPostContent.put( "kind", "jar" );
             rekorPostContent.put( "apiVersion", "0.0.1" );
@@ -523,7 +538,7 @@ public class Sign
                 throw new IOException( "bad response from rekor: " + rekorResp.parseAsString() );
             }
 
-            URL rekorEntryUrl = new URL( r.rekorInstanceURL(), rekorResp.getHeaders().getLocation() );
+            URL rekorEntryUrl = new URL( new URL(r.rekorInstanceURL()), rekorResp.getHeaders().getLocation() );
             LOGGER.info( String.format( "Created entry in transparency log for JAR @ '%s'", rekorEntryUrl ) );
             return rekorEntryUrl;
         }
