@@ -51,6 +51,8 @@ import java.util.zip.ZipFile;
 import com.google.api.client.auth.oauth2.AuthorizationCodeFlow;
 import com.google.api.client.auth.oauth2.BearerToken;
 import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.auth.openidconnect.IdToken;
 import com.google.api.client.auth.openidconnect.IdTokenVerifier;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -72,40 +74,141 @@ import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.jarsigner.JarSignerUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Sign
+ * Goal which: - generates ephemeral key pair - requests code signing
+ * certificate from sigstore Fulcio - signs the JAR file - publishes signature
+ * to sigstore rekor - verifies the signed JAR
  */
-public class Sign
+@Mojo( name = "sign", defaultPhase = LifecyclePhase.PACKAGE )
+public class SignMojo extends AbstractMojo
 {
     public static final int HTTP_201 = 201;
-    private static final Logger LOGGER = LoggerFactory.getLogger( Sign.class );
 
-    private SigstoreRequest r;
+    /**
+     * Reference to maven project; will be used to find JAR file to be signed unless
+     * specified in input-jar
+     */
+    @Parameter( defaultValue = "${project}", readonly = true, required = true )
+    private MavenProject project;
 
-    public static void main( String[] args ) throws Exception
-    {
+    /**
+     * Location of the input JAR file. defaults to default project artifact
+     */
+    @Parameter( property = "input-jar" )
+    private File inputJar;
 
-    }
+    /**
+     * Location of the signed JAR file; defaults to overwriting the input file with
+     * the signed JAR
+     */
+    @Parameter( property = "output-signed-jar" )
+    private File outputSignedJar;
 
-    public Sign( SigstoreRequest request )
-    {
-        this.r = request;
-    }
+    /**
+     * Location of the code signing certificate (including public key) used to
+     * verify signature
+     */
+    @Parameter( defaultValue = "${project.build.directory}/signingCert.pem", property = "output-signing-cert",
+                required = true )
+    private File outputSigningCert;
 
-    public void executeSigstoreFlow() throws Exception
+    /**
+     * Signing algorithm to be used; default is ECDSA
+     */
+    @Parameter( defaultValue = "sigstore", property = "signer-name", required = true )
+    private String signerName;
+
+    /**
+     * Signing algorithm to be used; default is ECDSA
+     */
+    @Parameter( defaultValue = "EC", property = "signing-algorithm", required = true )
+    private String signingAlgorithm;
+
+    /**
+     * Signing algorithm specification to be used; default is secp256r1
+     */
+    @Parameter( defaultValue = "secp256r1", property = "signing-algorithm-spec", required = true )
+    private String signingAlgorithmSpec;
+
+    /**
+     * Enable/disable SSL hostname verification
+     */
+    @Parameter( defaultValue = "true", property = "ssl-verification", required = true )
+    private boolean sslVerfication;
+
+    /**
+     * URL of Fulcio instance
+     */
+    @Parameter( defaultValue = "https://fulcio.sigstore.dev", property = "fulcio-instance-url", required = true )
+    private URL fulcioInstanceURL;
+
+    /**
+     * Use browser-less OAuth Device Code flow instead of opening local browser
+     */
+    @Parameter( defaultValue = "false", property = "oidc-device-code", required = true )
+    private boolean oidcDeviceCodeFlow;
+
+    /**
+     * Client ID for OIDC Identity Provider
+     */
+    @Parameter( defaultValue = "sigstore", property = "oidc-client-id", required = true )
+    private String oidcClientID;
+
+    /**
+     * URL of OIDC Identity Provider Authorization endpoint
+     */
+    @Parameter( defaultValue = "https://oauth2.sigstore.dev/auth/auth", property = "oidc-auth-url", required = true )
+    private URL oidcAuthURL;
+
+    /**
+     * URL of OIDC Identity Provider Token endpoint
+     */
+    @Parameter( defaultValue = "https://oauth2.sigstore.dev/auth/token", property = "oidc-token-url", required = true )
+    private URL oidcTokenURL;
+
+    /**
+     * URL of OIDC Identity Provider Device Code endpoint
+     */
+    @Parameter( defaultValue = "https://oauth2.sigstore.dev/auth/device/code", property = "oidc-device-code-url",
+                required = true )
+    private URL oidcDeviceCodeURL;
+
+    /**
+     * URL of Rekor instance
+     */
+    @Parameter( defaultValue = "https://rekor.sigstore.dev", property = "rekor-instance-url", required = true )
+    private URL rekorInstanceURL;
+
+    /**
+     * Email address of signer; if not specified, the email address returned in the OIDC identity token will be used
+     */
+    @Parameter( property = "email-address" )
+    private String emailAddress;
+
+    /**
+     * URL of Trusted Timestamp Authority (RFC3161 compliant)
+     */
+    @Parameter( defaultValue = "https://rekor.sigstore.dev/api/v1/timestamp", property = "tsa-url", required = true )
+    private URL tsaURL;
+
+    public void execute() throws MojoExecutionException
     {
         // generate keypair
-        KeyPair keypair = generateKeyPair( r.signingAlgorithm(), r.signingAlgorithmSpec() );
+        KeyPair keypair = generateKeyPair( signingAlgorithm, signingAlgorithmSpec );
 
         // do OIDC dance, get ID token
-        String rawIdToken = getIDToken( r.emailAddress() );
+        String rawIdToken = getIDToken( emailAddress );
 
         // sign email address with private key
-        String signedEmail = signEmailAddress( r.emailAddress(), keypair.getPrivate() );
+        String signedEmail = signEmailAddress( emailAddress, keypair.getPrivate() );
 
         // push to fulcio, get signing cert chain
         CertPath certs = getSigningCert( signedEmail, keypair.getPublic(), rawIdToken );
@@ -114,7 +217,7 @@ public class Sign
         byte[] jarBytes = signJarFile( keypair.getPrivate(), certs );
 
         // write signing certificate to file
-        writeSigningCertToFile( certs, r.outputSigningCert() );
+        writeSigningCertToFile( certs, outputSigningCert );
 
         // submit jar to rekor
         submitToRekor( jarBytes );
@@ -126,10 +229,11 @@ public class Sign
      * @param signingAlgorithm     an absolute URL giving the base location of the image
      * @param signingAlgorithmSpec the location of the image, relative to the url argument
      * @return the public and private keypair
+     * @throws MojoExecutionException If any exception happened during the key generation process
      */
-    public KeyPair generateKeyPair( String signingAlgorithm, String signingAlgorithmSpec ) throws Exception
+    public KeyPair generateKeyPair( String signingAlgorithm, String signingAlgorithmSpec ) throws MojoExecutionException
     {
-        LOGGER.info( String.format( "generating keypair using %s with %s parameters", signingAlgorithm,
+        getLog().info( String.format( "generating keypair using %s with %s parameters", signingAlgorithm,
                 signingAlgorithmSpec ) );
         try
         {
@@ -150,7 +254,7 @@ public class Sign
         }
         catch ( Exception e )
         {
-            throw new Exception( "Error creating keypair:", e );
+            throw new MojoExecutionException( "Error creating keypair:", e );
         }
     }
 
@@ -160,9 +264,9 @@ public class Sign
      * @param emailAddress The email address to sign; this should match the email address in the OIDC token
      * @param privKey      The private key used to sign the email address
      * @return base64 encoded String containing the signature for the provided email address
-     * @throws Exception If any exception happened during the signing process
+     * @throws MojoExecutionException If any exception happened during the signing process
      */
-    public String signEmailAddress( String emailAddress, PrivateKey privKey ) throws Exception
+    public String signEmailAddress( String emailAddress, PrivateKey privKey ) throws MojoExecutionException
     {
         try
         {
@@ -183,7 +287,7 @@ public class Sign
                             String.format( "email address specified '%s' is invalid", emailAddress ) );
                 }
             }
-            LOGGER.info(
+            getLog().info(
                     String.format( "signing email address '%s' as proof of possession of private key", emailAddress ) );
             Signature sig = null;
             switch ( privKey.getAlgorithm() )
@@ -194,7 +298,7 @@ public class Sign
                 default:
                     throw new NoSuchAlgorithmException(
                             String.format( "unable to generate signature for signing algorithm %s",
-                                    r.signingAlgorithm() ) );
+                                    signingAlgorithm ) );
             }
             sig.initSign( privKey );
             sig.update( emailAddress.getBytes() );
@@ -202,7 +306,8 @@ public class Sign
         }
         catch ( Exception e )
         {
-            throw new Exception( String.format( "Error signing '%s': %s", emailAddress, e.getMessage() ), e );
+            throw new MojoExecutionException( String.format( "Error signing '%s': %s", emailAddress, e.getMessage() ),
+                    e );
         }
     }
 
@@ -215,7 +320,7 @@ public class Sign
     public HttpTransport getHttpTransport()
     {
         HttpClientBuilder hcb = ApacheHttpTransport.newDefaultHttpClientBuilder();
-        if ( !r.sslVerfication() )
+        if ( !sslVerfication )
         {
             hcb = hcb.setSSLHostnameVerifier( NoopHostnameVerifier.INSTANCE );
         }
@@ -227,8 +332,9 @@ public class Sign
      *
      * @param expectedEmailAddress The email address we expected to see in the identity token
      * @return the ID token String (in JWS format)
+     * @throws MojoExecutionException If any exception happened during the OIDC authentication flow
      */
-    public String getIDToken( String expectedEmailAddress ) throws Exception
+    public String getIDToken( String expectedEmailAddress ) throws MojoExecutionException
     {
         try
         {
@@ -238,18 +344,25 @@ public class Sign
 
             final String idTokenKey = "id_token";
 
-            if ( !r.oidcDeviceCodeFlow() )
+            if ( !oidcDeviceCodeFlow )
             {
                 AuthorizationCodeFlow.Builder flowBuilder = new AuthorizationCodeFlow.Builder(
                         BearerToken.authorizationHeaderAccessMethod(), httpTransport, jsonFactory,
-                        new GenericUrl( r.oidcTokenURL().toString() ),
-                        new ClientParametersAuthentication( r.oidcClientID(), null ),
-                        r.oidcClientID(), r.oidcAuthURL().toString() )
+                        new GenericUrl( oidcTokenURL.toString() ),
+                        new ClientParametersAuthentication( oidcClientID, null ),
+                        oidcClientID, oidcAuthURL.toString() )
                         .enablePKCE()
                         .setScopes( List.of( "openid", "email" ) )
-                        .setCredentialCreatedListener(
-                                ( credential, tokenResponse ) -> memStoreFactory.getDataStore( "user" ).set( idTokenKey,
-                                        tokenResponse.get( idTokenKey ).toString() ) );
+                        .setCredentialCreatedListener( new AuthorizationCodeFlow.CredentialCreatedListener()
+                        {
+                            @Override
+                            public void onCredentialCreated( Credential credential, TokenResponse tokenResponse )
+                                    throws IOException
+                            {
+                                memStoreFactory.getDataStore( "user" ).set( idTokenKey,
+                                        tokenResponse.get( idTokenKey ).toString() );
+                            }
+                        } );
                 AuthorizationCodeInstalledApp app = new AuthorizationCodeInstalledApp( flowBuilder.build(),
                         new LocalServerReceiver() );
                 app.authorize( "user" );
@@ -271,23 +384,21 @@ public class Sign
             {
                 throw new InvalidObjectException(
                         String.format( "email in ID token '%s' does not match address specified to plugin '%s'",
-                                emailFromIDToken, r.emailAddress() ) );
+                                emailFromIDToken, emailAddress ) );
             }
             else if ( Boolean.FALSE.equals( emailVerified ) )
             {
                 throw new InvalidObjectException(
                         String.format( "identity provider '%s' reports email address '%s' has not been verified",
-                                parsedIdToken.getPayload().getIssuer(), r.emailAddress() ) );
+                                parsedIdToken.getPayload().getIssuer(), emailAddress ) );
             }
-
-            // bad side effect
-            r = ImmutableSigstoreRequest.builder().from( r ).emailAddress( emailFromIDToken ).build();
+            this.emailAddress = emailFromIDToken;
 
             return idTokenString;
         }
         catch ( Exception e )
         {
-            throw new Exception( "Error signing email address:", e );
+            throw new MojoExecutionException( "Error signing email address:", e );
         }
     }
 
@@ -301,9 +412,9 @@ public class Sign
      *                    certificate
      * @param idToken     a raw OIDC Identity token specified in JWS format
      * @return The certificate chain including the code signing certificate
-     * @throws Exception If any exception happened during the request for the code signing certificate
+     * @throws MojoExecutionException If any exception happened during the request for the code signing certificate
      */
-    public CertPath getSigningCert( String signedEmail, PublicKey pubKey, String idToken ) throws Exception
+    public CertPath getSigningCert( String signedEmail, PublicKey pubKey, String idToken ) throws MojoExecutionException
     {
         try
         {
@@ -325,13 +436,13 @@ public class Sign
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             jsonContent.writeTo( stream );
 
-            GenericUrl fulcioPostUrl = new GenericUrl( r.fulcioInstanceURL() + "/api/v1/signingCert" );
+            GenericUrl fulcioPostUrl = new GenericUrl( fulcioInstanceURL + "/api/v1/signingCert" );
             HttpRequest req = httpTransport.createRequestFactory().buildPostRequest( fulcioPostUrl, jsonContent );
 
             req.getHeaders().set( "Accept", "application/pem-certificate-chain" );
             req.getHeaders().set( "Authorization", "Bearer " + idToken );
 
-            LOGGER.info( "requesting signing certificate" );
+            getLog().info( "requesting signing certificate" );
             HttpResponse resp = req.execute();
             if ( resp.getStatusCode() != HTTP_201 )
             {
@@ -339,7 +450,7 @@ public class Sign
                         String.format( "bad response from fulcio @ '%s' : %s", fulcioPostUrl, resp.parseAsString() ) );
             }
 
-            LOGGER.info( "parsing signing certificate" );
+            getLog().info( "parsing signing certificate" );
             CertificateFactory cf = CertificateFactory.getInstance( "X.509" );
             ArrayList<X509Certificate> certList = new ArrayList<>();
             PemReader pemReader = new PemReader( new InputStreamReader( resp.getContent() ) );
@@ -362,8 +473,8 @@ public class Sign
         }
         catch ( Exception e )
         {
-            throw new Exception(
-                    String.format( "Error obtaining signing certificate from Fulcio @%s:", r.fulcioInstanceURL() ), e );
+            throw new MojoExecutionException(
+                    String.format( "Error obtaining signing certificate from Fulcio @%s:", fulcioInstanceURL ), e );
         }
     }
 
@@ -374,21 +485,29 @@ public class Sign
      * @param certs   The certificate chain including the code signing certificate which can be used to verify the
      *                signature
      * @return The signed JAR file in byte array
-     * @throws Exception If any exception happened during the JAR signing process
+     * @throws MojoExecutionException If any exception happened during the JAR signing process
      */
-    public byte[] signJarFile( PrivateKey privKey, CertPath certs ) throws Exception
+    public byte[] signJarFile( PrivateKey privKey, CertPath certs ) throws MojoExecutionException
     {
         // sign JAR using keypair
         try
         {
-            File jarToSign = r.artifact();
-            LOGGER.info( "signing JAR file " + jarToSign.getAbsolutePath() );
+            File jarToSign;
+            if ( inputJar != null )
+            {
+                jarToSign = inputJar;
+            }
+            else
+            {
+                jarToSign = this.project.getArtifact().getFile();
+            }
+            getLog().info( "signing JAR file " + jarToSign.getAbsolutePath() );
 
             File outputJarFile;
             Boolean overwrite = true;
-            if ( r.outputSignedJar() != null )
+            if ( outputSignedJar != null )
             {
-                outputJarFile = r.outputSignedJar();
+                outputJarFile = outputSignedJar;
                 overwrite = false;
             }
             else
@@ -397,16 +516,16 @@ public class Sign
             }
             ByteArrayOutputStream memOut = new ByteArrayOutputStream();
 
-            BiConsumer<String, String> progressLogger = ( op, entryName ) -> LOGGER
+            BiConsumer<String, String> progressLogger = ( op, entryName ) -> getLog()
                     .debug( String.format( "%s %s", op, entryName ) );
             JarSigner.Builder jsb = new JarSigner.Builder( privKey, certs ).digestAlgorithm( "SHA-256" )
                     .signatureAlgorithm( "SHA256withECDSA" ).setProperty( "internalsf", "true" )
-                    .signerName( r.signerName() )
+                    .signerName( signerName )
                     .eventHandler( progressLogger );
 
-            if ( r.tsaURL().toString().equals( "" ) )
+            if ( tsaURL.toString().equals( "" ) )
             {
-                jsb = jsb.tsa( r.tsaURL().toURI() );
+                jsb = jsb.tsa( tsaURL.toURI() );
             }
 
             JarSigner js = jsb.build();
@@ -421,7 +540,7 @@ public class Sign
                     {
                         throw new IOException( "error overwriting unsigned JAR" );
                     }
-                    LOGGER.info( "wrote signed JAR to " + jarToSign.getAbsolutePath() );
+                    getLog().info( "wrote signed JAR to " + jarToSign.getAbsolutePath() );
                     if ( !JarSignerUtil.isArchiveSigned( jarToSign ) )
                     {
                         throw new VerifyError( "JAR signing verification failed" );
@@ -429,8 +548,8 @@ public class Sign
                 }
                 else
                 {
-                    LOGGER.info( "wrote signed JAR to " + r.outputSignedJar().getAbsolutePath() );
-                    if ( !JarSignerUtil.isArchiveSigned( r.outputSignedJar() ) )
+                    getLog().info( "wrote signed JAR to " + outputSignedJar.getAbsolutePath() );
+                    if ( !JarSignerUtil.isArchiveSigned( outputSignedJar ) )
                     {
                         throw new VerifyError( "JAR signing verification failed" );
                     }
@@ -441,7 +560,7 @@ public class Sign
         }
         catch ( Exception e )
         {
-            throw new Exception( "Error signing JAR file:", e );
+            throw new MojoExecutionException( "Error signing JAR file:", e );
         }
     }
 
@@ -451,11 +570,11 @@ public class Sign
      * @param certs             The certificate chain including the code signing certificate which can be used to verify
      *                          the signature
      * @param outputSigningCert The file where the code signing cert should be written to
-     * @throws Exception If any exception happened during writing the certificate to the specified file
+     * @throws MojoExecutionException If any exception happened during writing the certificate to the specified file
      */
-    public void writeSigningCertToFile( CertPath certs, File outputSigningCert ) throws Exception
+    public void writeSigningCertToFile( CertPath certs, File outputSigningCert ) throws MojoExecutionException
     {
-        LOGGER.info( "writing signing certificate to " + outputSigningCert.getAbsolutePath() );
+        getLog().info( "writing signing certificate to " + outputSigningCert.getAbsolutePath() );
         try
         {
             final String lineSeparator = System.getProperty( "line.separator" );
@@ -478,7 +597,7 @@ public class Sign
         }
         catch ( Exception e )
         {
-            throw new Exception( String.format( "Error writing signing certificate to file '%s':",
+            throw new MojoExecutionException( String.format( "Error writing signing certificate to file '%s':",
                     outputSigningCert.getAbsolutePath() ), e );
         }
     }
@@ -488,9 +607,9 @@ public class Sign
      *
      * @param jarBytes The signed JAR file in a byte array
      * @return The URL where the entry in the transparency log can be seen for this signature/key combination
-     * @throws Exception If any exception happened during interaction with the Rekor instance
+     * @throws MojoExecutionException If any exception happened during interaction with the Rekor instance
      */
-    public URL submitToRekor( byte[] jarBytes ) throws Exception
+    public URL submitToRekor( byte[] jarBytes ) throws MojoExecutionException
     {
         try
         {
@@ -510,7 +629,7 @@ public class Sign
             ByteArrayOutputStream rekorStream = new ByteArrayOutputStream();
             rekorJsonContent.writeTo( rekorStream );
 
-            GenericUrl rekorPostUrl = new GenericUrl( r.rekorInstanceURL() + "/api/v1/log/entries" );
+            GenericUrl rekorPostUrl = new GenericUrl( rekorInstanceURL + "/api/v1/log/entries" );
             HttpRequest rekorReq =
                     httpTransport.createRequestFactory().buildPostRequest( rekorPostUrl, rekorJsonContent );
 
@@ -523,14 +642,14 @@ public class Sign
                 throw new IOException( "bad response from rekor: " + rekorResp.parseAsString() );
             }
 
-            URL rekorEntryUrl = new URL( r.rekorInstanceURL(), rekorResp.getHeaders().getLocation() );
-            LOGGER.info( String.format( "Created entry in transparency log for JAR @ '%s'", rekorEntryUrl ) );
+            URL rekorEntryUrl = new URL( rekorInstanceURL, rekorResp.getHeaders().getLocation() );
+            getLog().info( String.format( "Created entry in transparency log for JAR @ '%s'", rekorEntryUrl ) );
             return rekorEntryUrl;
         }
         catch ( Exception e )
         {
-            throw new Exception(
-                    String.format( "Error in submitting entry to Rekor @ %s:", r.rekorInstanceURL() ), e );
+            throw new MojoExecutionException(
+                    String.format( "Error in submitting entry to Rekor @ %s:", rekorInstanceURL ), e );
         }
     }
 }
