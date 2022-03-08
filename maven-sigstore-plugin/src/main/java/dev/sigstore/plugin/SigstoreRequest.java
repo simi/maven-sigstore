@@ -33,7 +33,10 @@ public abstract class SigstoreRequest
 {
     public abstract Path artifact();
 
-    public abstract Path outputSignedJar();
+    @Value.Derived
+    public Path artifactSignature() {
+        return artifact().resolveSibling( artifact().getFileName().toString() + ".sig" );
+    }
 
     @Value.Derived
     public Path outputSigningCert() {

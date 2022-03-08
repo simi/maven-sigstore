@@ -38,6 +38,7 @@ under the License.
 
   <modules>
     <module>maven-sigstore-core</module>
+    <module>maven-sigstore-model</module>
     <module>maven-sigstore-plugin</module>
   </modules>
 
@@ -95,6 +96,7 @@ under the License.
               <!--
                ! Excluded the license files itself cause they do not have have a license of themselves.
                -->
+              <exclude>src/main/schema/**</exclude>
               <exclude>src/main/appended-resources/licenses/MIT-slf4j-api-1.7.30.txt</exclude>
               <exclude>src/main/appended-resources/licenses/EPL-1.0.txt</exclude>
               <exclude>src/main/appended-resources/licenses/unrecognized-javax.annotation-api-1.3.2.txt</exclude>
@@ -131,6 +133,16 @@ under the License.
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.apache.maven.sigstore</groupId>
+        <artifactId>maven-sigstore-core</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.maven.sigstore</groupId>
+        <artifactId>maven-sigstore-model</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+      </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>

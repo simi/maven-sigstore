@@ -22,15 +22,16 @@ package dev.sigstore.plugin;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InvalidObjectException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -46,9 +47,8 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.zip.ZipFile;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.auth.oauth2.AuthorizationCodeFlow;
 import com.google.api.client.auth.oauth2.BearerToken;
 import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
@@ -56,7 +56,9 @@ import com.google.api.client.auth.openidconnect.IdToken;
 import com.google.api.client.auth.openidconnect.IdTokenVerifier;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpContent;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
@@ -68,12 +70,12 @@ import com.google.api.client.util.PemReader;
 import com.google.api.client.util.PemReader.Section;
 import com.google.api.client.util.store.DataStoreFactory;
 import com.google.api.client.util.store.MemoryDataStoreFactory;
-import jdk.security.jarsigner.JarSigner;
-import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.maven.shared.jarsigner.JarSignerUtil;
+import org.apache.maven.sigstore.model.rekord.Data;
+import org.apache.maven.sigstore.model.rekord.Hash;
+import org.apache.maven.sigstore.model.rekord.Rekord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,76 +93,80 @@ public class Sign
     public static final int HTTP_201 = 201;
     private static final Logger LOGGER = LoggerFactory.getLogger( Sign.class );
 
-    private SigstoreRequest r;
+    private SigstoreRequest request;
+    private SigstoreResult result;
 
     public static void main( String[] args ) throws Exception
     {
-        SigstoreRequest r = ImmutableSigstoreRequest.builder()
+        SigstoreRequest request = ImmutableSigstoreRequest.builder()
                 .emailAddress( "jason@vanzyl.ca" )
-                .artifact( Paths.get("/Users/jvanzyl/js/provisio/maven-sigstore/maven-sigstore-plugin/target/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar") )
-                .outputSignedJar( Paths.get("/Users/jvanzyl/js/provisio/maven-sigstore/maven-sigstore-plugin/target/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar.signed" ) )
+                .artifact( Paths.get(
+                        "/Users/jvanzyl/js/provisio/maven-sigstore-site/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar" ) )
                 .build();
 
-        Sign signer = new Sign(r);
+        Sign signer = new Sign( request );
         signer.executeSigstoreFlow();
     }
 
     public Sign( SigstoreRequest request )
     {
-        this.r = request;
+        this.request = request;
     }
 
     public void executeSigstoreFlow() throws Exception
     {
+        result = ImmutableSigstoreResult.builder().build();
+
         // generate keypair
-        KeyPair keypair = generateKeyPair( r.signingAlgorithm(), r.signingAlgorithmSpec() );
+        result = generateKeyPair( request, result );
 
         // do OIDC dance, get ID token
-        String rawIdToken = getIDToken( r.emailAddress() );
+        result = getIDToken( request, result );
 
         // sign email address with private key
-        String signedEmail = signEmailAddress( r.emailAddress(), keypair.getPrivate() );
+        result = signEmailAddress( request, result );
 
         // push to fulcio, get signing cert chain
-        CertPath certs = getSigningCert( signedEmail, keypair.getPublic(), rawIdToken );
+        result = getSigningCert( request, result );
 
         // sign JAR file here
-        byte[] jarBytes = signJarFile( keypair.getPrivate(), certs );
+        result = artifactSignature( request, result );
 
         // write signing certificate to file
-        writeSigningCertToFile( certs, r.outputSigningCert().toFile() );
+        result = writeSigningCertToFile( request, result );
 
         // submit jar to rekor
-        submitToRekor( jarBytes );
+        result = submitToRekor( request, result );
+
+        LOGGER.info( String.format( "Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl() ) );
     }
 
     /**
      * Returns a new ephemeral keypair according to the plugin parameters
-     *
-     * @param signingAlgorithm     an absolute URL giving the base location of the image
-     * @param signingAlgorithmSpec the location of the image, relative to the url argument
-     * @return the public and private keypair
      */
-    public KeyPair generateKeyPair( String signingAlgorithm, String signingAlgorithmSpec ) throws Exception
+    public SigstoreResult generateKeyPair( SigstoreRequest request, SigstoreResult result ) throws Exception
     {
+        String signingAlgorithm = request.signingAlgorithm();
+        String signingAlgorithmSpec = request.signingAlgorithmSpec();
+
         LOGGER.info( String.format( "generating keypair using %s with %s parameters", signingAlgorithm,
                 signingAlgorithmSpec ) );
         try
         {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance( signingAlgorithm );
-            AlgorithmParameterSpec aps = null;
-            switch ( signingAlgorithm )
+            AlgorithmParameterSpec aps;
+            if ( "EC".equals( signingAlgorithm ) )
             {
-                case "EC":
-                    aps = new ECGenParameterSpec( signingAlgorithmSpec );
-                    break;
-                default:
-                    throw new IllegalArgumentException( String
-                            .format( "unable to create signing algorithm spec for signing algorithm %s",
-                                    signingAlgorithm ) );
+                aps = new ECGenParameterSpec( signingAlgorithmSpec );
+            }
+            else
+            {
+                throw new IllegalArgumentException( String
+                        .format( "unable to create signing algorithm spec for signing algorithm %s",
+                                signingAlgorithm ) );
             }
             kpg.initialize( aps, new SecureRandom() );
-            return kpg.generateKeyPair();
+            return ImmutableSigstoreResult.builder().from( result ).keyPair( kpg.generateKeyPair() ).build();
         }
         catch ( Exception e )
         {
@@ -171,48 +177,39 @@ public class Sign
     /**
      * Signs the provided email address using the provided private key
      *
-     * @param emailAddress The email address to sign; this should match the email address in the OIDC token
-     * @param privKey      The private key used to sign the email address
      * @return base64 encoded String containing the signature for the provided email address
      * @throws Exception If any exception happened during the signing process
      */
-    public String signEmailAddress( String emailAddress, PrivateKey privKey ) throws Exception
+    public SigstoreResult signEmailAddress( SigstoreRequest request, SigstoreResult result ) throws Exception
     {
+        PrivateKey privKey = result.keyPair().getPrivate();
+        String emailAddress = result.emailAddress();
+
         try
         {
-            if ( privKey == null )
+            EmailValidator ev = EmailValidator.getInstance();
+            if ( !ev.isValid( emailAddress ) )
             {
-                throw new IllegalArgumentException( "private key must be specified" );
-            }
-            if ( emailAddress == null )
-            {
-                throw new IllegalArgumentException( "email address must not be null" );
-            }
-            else
-            {
-                EmailValidator ev = EmailValidator.getInstance();
-                if ( !ev.isValid( emailAddress ) )
-                {
-                    throw new IllegalArgumentException(
-                            String.format( "email address specified '%s' is invalid", emailAddress ) );
-                }
+                throw new IllegalArgumentException(
+                        String.format( "email address specified '%s' is invalid", emailAddress ) );
             }
             LOGGER.info(
                     String.format( "signing email address '%s' as proof of possession of private key", emailAddress ) );
-            Signature sig = null;
-            switch ( privKey.getAlgorithm() )
+            Signature sig;
+            if ( "EC".equals( privKey.getAlgorithm() ) )
             {
-                case "EC":
-                    sig = Signature.getInstance( "SHA256withECDSA" );
-                    break;
-                default:
-                    throw new NoSuchAlgorithmException(
-                            String.format( "unable to generate signature for signing algorithm %s",
-                                    r.signingAlgorithm() ) );
+                sig = Signature.getInstance( "SHA256withECDSA" );
+            }
+            else
+            {
+                throw new NoSuchAlgorithmException(
+                        String.format( "unable to generate signature for signing algorithm %s",
+                                request.signingAlgorithm() ) );
             }
             sig.initSign( privKey );
             sig.update( emailAddress.getBytes() );
-            return Base64.getEncoder().encodeToString( sig.sign() );
+            return ImmutableSigstoreResult.builder().from( result )
+                    .signedEmailAddress( Base64.getEncoder().encodeToString( sig.sign() ) ).build();
         }
         catch ( Exception e )
         {
@@ -229,7 +226,7 @@ public class Sign
     public HttpTransport getHttpTransport()
     {
         HttpClientBuilder hcb = ApacheHttpTransport.newDefaultHttpClientBuilder();
-        if ( !r.sslVerfication() )
+        if ( !request.sslVerfication() )
         {
             hcb = hcb.setSSLHostnameVerifier( NoopHostnameVerifier.INSTANCE );
         }
@@ -239,11 +236,12 @@ public class Sign
     /**
      * Obtains an OpenID Connect Identity Token from the OIDC provider specified in <code>oidcAuthURL</code>
      *
-     * @param expectedEmailAddress The email address we expected to see in the identity token
      * @return the ID token String (in JWS format)
      */
-    public String getIDToken( String expectedEmailAddress ) throws Exception
+    public SigstoreResult getIDToken( SigstoreRequest request, SigstoreResult result ) throws Exception
     {
+        String expectedEmailAddress = request.emailAddress();
+
         try
         {
             JsonFactory jsonFactory = new GsonFactory();
@@ -252,13 +250,13 @@ public class Sign
 
             final String idTokenKey = "id_token";
 
-            if ( !r.oidcDeviceCodeFlow() )
+            if ( !request.oidcDeviceCodeFlow() )
             {
                 AuthorizationCodeFlow.Builder flowBuilder = new AuthorizationCodeFlow.Builder(
                         BearerToken.authorizationHeaderAccessMethod(), httpTransport, jsonFactory,
-                        new GenericUrl( r.oidcTokenURL().toString() ),
-                        new ClientParametersAuthentication( r.oidcClientID(), null ),
-                        r.oidcClientID(), r.oidcAuthURL().toString() )
+                        new GenericUrl( request.oidcTokenURL().toString() ),
+                        new ClientParametersAuthentication( request.oidcClientID(), null ),
+                        request.oidcClientID(), request.oidcAuthURL().toString() )
                         .enablePKCE()
                         .setScopes( List.of( "openid", "email" ) )
                         .setCredentialCreatedListener(
@@ -285,19 +283,17 @@ public class Sign
             {
                 throw new InvalidObjectException(
                         String.format( "email in ID token '%s' does not match address specified to plugin '%s'",
-                                emailFromIDToken, r.emailAddress() ) );
+                                emailFromIDToken, request.emailAddress() ) );
             }
             else if ( Boolean.FALSE.equals( emailVerified ) )
             {
                 throw new InvalidObjectException(
                         String.format( "identity provider '%s' reports email address '%s' has not been verified",
-                                parsedIdToken.getPayload().getIssuer(), r.emailAddress() ) );
+                                parsedIdToken.getPayload().getIssuer(), request.emailAddress() ) );
             }
 
-            // bad side effect
-            r = ImmutableSigstoreRequest.builder().from( r ).emailAddress( emailFromIDToken ).build();
-
-            return idTokenString;
+            return ImmutableSigstoreResult.builder().from( result ).emailAddress( emailFromIDToken )
+                    .rawIdToken( idTokenString ).build();
         }
         catch ( Exception e )
         {
@@ -309,16 +305,15 @@ public class Sign
      * Obtains a X509 code signing certificate signed by the Fulcio instance specified in
      * <code>fulcioInstanceURL</code>.
      *
-     * @param signedEmail a base64 encoded String containing the signed email address to associate with the requested
-     *                    certificate
-     * @param pubKey      the public key used to verify the signed email address; this key will be included in the final
-     *                    certificate
-     * @param idToken     a raw OIDC Identity token specified in JWS format
      * @return The certificate chain including the code signing certificate
      * @throws Exception If any exception happened during the request for the code signing certificate
      */
-    public CertPath getSigningCert( String signedEmail, PublicKey pubKey, String idToken ) throws Exception
+    public SigstoreResult getSigningCert( SigstoreRequest request, SigstoreResult result ) throws Exception
     {
+        PublicKey pubKey = result.keyPair().getPublic();
+        String signedEmail = result.signedEmailAddress();
+        String idToken = result.rawIdToken();
+
         try
         {
             HttpTransport httpTransport = getHttpTransport();
@@ -339,7 +334,7 @@ public class Sign
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             jsonContent.writeTo( stream );
 
-            GenericUrl fulcioPostUrl = new GenericUrl( r.fulcioInstanceURL() + "/api/v1/signingCert" );
+            GenericUrl fulcioPostUrl = new GenericUrl( request.fulcioInstanceURL() + "/api/v1/signingCert" );
             HttpRequest req = httpTransport.createRequestFactory().buildPostRequest( fulcioPostUrl, jsonContent );
 
             req.getHeaders().set( "Accept", "application/pem-certificate-chain" );
@@ -364,7 +359,6 @@ public class Sign
                 {
                     break;
                 }
-
                 byte[] certBytes = section.getBase64DecodedBytes();
                 certList.add( (X509Certificate) cf.generateCertificate( new ByteArrayInputStream( certBytes ) ) );
             }
@@ -372,87 +366,37 @@ public class Sign
             {
                 throw new IOException( "no certificates were found in response from Fulcio instance" );
             }
-            return cf.generateCertPath( certList );
+            return ImmutableSigstoreResult.builder().from( result )
+                    .signingCert( cf.generateCertPath( certList ) ).build();
         }
         catch ( Exception e )
         {
             throw new Exception(
-                    String.format( "Error obtaining signing certificate from Fulcio @%s:", r.fulcioInstanceURL() ), e );
+                    String.format( "Error obtaining signing certificate from Fulcio @%s:",
+                            request.fulcioInstanceURL() ), e );
         }
     }
 
     /**
      * Signs a JAR file using the private key; the provided certificate chain will be included in the signed JAR file
      *
-     * @param privKey the private key that should be used to sign the JAR file
-     * @param certs   The certificate chain including the code signing certificate which can be used to verify the
-     *                signature
      * @return The signed JAR file in byte array
      * @throws Exception If any exception happened during the JAR signing process
      */
-    public byte[] signJarFile( PrivateKey privKey, CertPath certs ) throws Exception
+    public SigstoreResult artifactSignature( SigstoreRequest request, SigstoreResult result ) throws Exception
     {
-        // sign JAR using keypair
         try
         {
-            File jarToSign = r.artifact().toFile();
-            LOGGER.info( "signing JAR file " + jarToSign.getAbsolutePath() );
-
-            File outputJarFile;
-            Boolean overwrite = true;
-            if ( r.outputSignedJar() != null )
-            {
-                outputJarFile = r.outputSignedJar().toFile();
-                overwrite = false;
-            }
-            else
-            {
-                outputJarFile = File.createTempFile( "signingTemp", ".jar", jarToSign.getParentFile() );
-            }
-            ByteArrayOutputStream memOut = new ByteArrayOutputStream();
-
-            BiConsumer<String, String> progressLogger = ( op, entryName ) -> LOGGER
-                    .debug( String.format( "%s %s", op, entryName ) );
-
-            JarSigner.Builder jsb = new JarSigner.Builder( privKey, certs ).digestAlgorithm( "SHA-256" )
-                    .signatureAlgorithm( "SHA256withECDSA" ).setProperty( "internalsf", "true" )
-                    .signerName( r.signerName() )
-                    .eventHandler( progressLogger );
-
-            if ( r.tsaURL().toString().equals( "" ) )
-            {
-                jsb = jsb.tsa( new URL(r.tsaURL()).toURI() );
-            }
-
-            JarSigner js = jsb.build();
-            try ( ZipFile in = new ZipFile( jarToSign );
-                  FileOutputStream jarOut = new FileOutputStream( outputJarFile );
-                  TeeOutputStream tee = new TeeOutputStream( jarOut, memOut ); )
-            {
-                js.sign( in, tee );
-                if ( Boolean.TRUE.equals( overwrite ) )
-                {
-                    if ( !outputJarFile.renameTo( jarToSign ) )
-                    {
-                        throw new IOException( "error overwriting unsigned JAR" );
-                    }
-                    LOGGER.info( "wrote signed JAR to " + jarToSign.getAbsolutePath() );
-                    if ( !JarSignerUtil.isArchiveSigned( jarToSign ) )
-                    {
-                        throw new VerifyError( "JAR signing verification failed" );
-                    }
-                }
-                else
-                {
-                    LOGGER.info( "wrote signed JAR to " + r.outputSignedJar().toString() );
-                    if ( !JarSignerUtil.isArchiveSigned( r.outputSignedJar().toFile() ) )
-                    {
-                        throw new VerifyError( "JAR signing verification failed" );
-                    }
-                }
-            }
-
-            return memOut.toByteArray();
+            File jarToSign = request.artifact().toFile();
+            LOGGER.info( "Creating signature for artifact " + jarToSign.getAbsolutePath() );
+            Signature signature = Signature.getInstance( "SHA256withECDSA" );
+            signature.initSign( result.keyPair().getPrivate() );
+            signature.update( Files.readAllBytes( request.artifact() ) );
+            byte[] artifactSignatureBytes = signature.sign();
+            String b64ArtifactSignatureContent = Base64.getEncoder().encodeToString( artifactSignatureBytes );
+            Files.writeString( request.artifactSignature(), b64ArtifactSignatureContent );
+            return ImmutableSigstoreResult.builder().from( result )
+                    .artifactSignatureContent( b64ArtifactSignatureContent ).build();
         }
         catch ( Exception e )
         {
@@ -463,13 +407,12 @@ public class Sign
     /**
      * Writes the code signing certificate to a file
      *
-     * @param certs             The certificate chain including the code signing certificate which can be used to verify
-     *                          the signature
-     * @param outputSigningCert The file where the code signing cert should be written to
      * @throws Exception If any exception happened during writing the certificate to the specified file
      */
-    public void writeSigningCertToFile( CertPath certs, File outputSigningCert ) throws Exception
+    public SigstoreResult writeSigningCertToFile( SigstoreRequest request, SigstoreResult result ) throws Exception
     {
+        CertPath certs = result.signingCert();
+        File outputSigningCert = request.outputSigningCert().toFile();
         LOGGER.info( "writing signing certificate to " + outputSigningCert.getAbsolutePath() );
         try
         {
@@ -480,52 +423,117 @@ public class Sign
             String encodedCertText = new String( encoder.encode( rawCrtText ) );
             String prettifiedCert = "-----BEGIN CERTIFICATE-----" + lineSeparator + encodedCertText + lineSeparator
                     + "-----END CERTIFICATE-----";
-
-            if ( !outputSigningCert.createNewFile() )
-            {
-                throw new IOException( String.format( "file at %s already exists; will not overwrite",
-                        outputSigningCert.getAbsolutePath() ) );
-            }
-            try ( FileWriter fw = new FileWriter( outputSigningCert ) )
-            {
-                fw.write( prettifiedCert );
-            }
+            String b64PublicKey = b64( prettifiedCert.getBytes( StandardCharsets.UTF_8 ) );
+            Files.writeString( outputSigningCert.toPath(), prettifiedCert );
+            return ImmutableSigstoreResult.builder().from( result ).signingCertContent( b64PublicKey ).build();
         }
         catch ( Exception e )
         {
             throw new Exception( String.format( "Error writing signing certificate to file '%s':",
                     outputSigningCert.getAbsolutePath() ), e );
         }
+
+        // The generated outputSigning cert file should be moved from request to result
+    }
+
+    private String b64( byte[] input )
+    {
+        return Base64.getEncoder().encodeToString( input );
+    }
+
+    private String sha256( Path path ) throws Exception
+    {
+        MessageDigest digest = MessageDigest.getInstance( "SHA-256" );
+        byte[] hash = digest.digest( Files.readAllBytes( path ) );
+        StringBuilder hexString = new StringBuilder( 2 * hash.length );
+        for ( int i = 0; i < hash.length; i++ )
+        {
+            String hex = Integer.toHexString( 0xff & hash[i] );
+            if ( hex.length() == 1 )
+            {
+                hexString.append( '0' );
+            }
+            hexString.append( hex );
+        }
+        return hexString.toString();
     }
 
     /**
      * Submits the signature to a Rekor transparency log
      *
-     * @param jarBytes The signed JAR file in a byte array
      * @return The URL where the entry in the transparency log can be seen for this signature/key combination
      * @throws Exception If any exception happened during interaction with the Rekor instance
      */
-    public URL submitToRekor( byte[] jarBytes ) throws Exception
+    public SigstoreResult submitToRekor( SigstoreRequest request, SigstoreResult result ) throws Exception
     {
+        String artifactSignatureContent = result.artifactSignatureContent();
+        PublicKey publicKey = result.keyPair().getPublic();
+
         try
         {
             HttpTransport httpTransport = getHttpTransport();
+            String jarB64 = Base64.getEncoder().encodeToString( Files.readAllBytes( request.artifact() ) );
 
-            String jarB64 = Base64.getEncoder().encodeToString( jarBytes );
             Map<String, Object> rekorPostContent = new HashMap<>();
-            Map<String, Object> specContent = new HashMap<>();
-            Map<String, Object> archiveContent = new HashMap<>();
-            archiveContent.put( "content", jarB64 );
-            specContent.put( "data", archiveContent );
-
-            rekorPostContent.put( "kind", "jar" );
+            rekorPostContent.put( "kind", "hashedrekord" );
             rekorPostContent.put( "apiVersion", "0.0.1" );
-            rekorPostContent.put( "spec", specContent );
-            JsonHttpContent rekorJsonContent = new JsonHttpContent( new GsonFactory(), rekorPostContent );
+
+            // This is the spec
+            Rekord h = new Rekord();
+            h.setAdditionalProperty( "kind", "hashedrekord" );
+            h.setAdditionalProperty( "apiVersion", "0.0.1" );
+
+            rekorPostContent.put( "spec", h );
+
+            // Data
+            Data data = new Data();
+            data.setContent( b64( Files.readAllBytes( request.artifact() ) ) );
+            h.setAdditionalProperty( "spec", data );
+
+            // Hash
+            Hash hash = new Hash();
+            hash.setValue( sha256( request.artifact() ) );
+            hash.setAlgorithm( Hash.Algorithm.SHA_256 );
+            data.setHash( hash );
+
+            h.setData( data );
+
+            org.apache.maven.sigstore.model.rekord.PublicKey p = new org.apache.maven.sigstore.model.rekord.PublicKey();
+            p.setContent( result.signingCertContent() );
+
+
+            // Signature
+            org.apache.maven.sigstore.model.rekord.Signature s = new org.apache.maven.sigstore.model.rekord.Signature();
+            s.setContent( artifactSignatureContent ); // jar signature
+            s.setFormat( org.apache.maven.sigstore.model.rekord.Signature.Format.X_509 );
+            s.setPublicKey( p );
+
+            h.setSignature( s );
+
+            //Map<String, Object> rekorPostContent = new HashMap<>();
+            //Map<String, Object> specContent = new HashMap<>();
+            //Map<String, Object> archiveContent = new HashMap<>();
+            //archiveContent.put( "content", jarB64 );
+            //specContent.put( "data", archiveContent );
+
+            //rekorPostContent.put( "kind", "hashedrekord" );
+            //rekorPostContent.put( "apiVersion", "0.0.1" );
+            //rekorPostContent.put( "spec", specContent );
+
+            ObjectMapper m = new ObjectMapper();
+
+            String json = m.writerWithDefaultPrettyPrinter().writeValueAsString( rekorPostContent );
+            System.out.println( json );
+            byte[] rekorContent = json.getBytes( StandardCharsets.UTF_8 );
+            HttpContent rekorJsonContent = new ByteArrayContent( null, rekorContent );
+            //HttpContent rekorJsonContent2 = new JsonHttpContent( new GsonFactory(), rekorPostContent );
+
+            System.out.println( m.writeValueAsString( rekorPostContent ) );
+
             ByteArrayOutputStream rekorStream = new ByteArrayOutputStream();
             rekorJsonContent.writeTo( rekorStream );
 
-            GenericUrl rekorPostUrl = new GenericUrl( r.rekorInstanceURL() + "/api/v1/log/entries" );
+            GenericUrl rekorPostUrl = new GenericUrl( request.rekorInstanceURL() + "/api/v1/log/entries" );
             HttpRequest rekorReq =
                     httpTransport.createRequestFactory().buildPostRequest( rekorPostUrl, rekorJsonContent );
 
@@ -538,14 +546,15 @@ public class Sign
                 throw new IOException( "bad response from rekor: " + rekorResp.parseAsString() );
             }
 
-            URL rekorEntryUrl = new URL( new URL(r.rekorInstanceURL()), rekorResp.getHeaders().getLocation() );
-            LOGGER.info( String.format( "Created entry in transparency log for JAR @ '%s'", rekorEntryUrl ) );
-            return rekorEntryUrl;
+            URL rekorEntryUrl = new URL( new URL( request.rekorInstanceURL() ), rekorResp.getHeaders().getLocation() );
+
+            return ImmutableSigstoreResult.builder().from( result )
+                    .rekorEntryUrl( rekorEntryUrl.toExternalForm() ).build();
         }
         catch ( Exception e )
         {
             throw new Exception(
-                    String.format( "Error in submitting entry to Rekor @ %s:", r.rekorInstanceURL() ), e );
+                    String.format( "Error in submitting entry to Rekor @ %s:", request.rekorInstanceURL() ), e );
         }
     }
 }
