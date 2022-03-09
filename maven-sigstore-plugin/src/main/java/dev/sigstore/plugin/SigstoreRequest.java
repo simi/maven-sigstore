@@ -19,8 +19,6 @@ package dev.sigstore.plugin;
  * under the License.
  */
 
-import java.io.File;
-import java.net.URL;
 import java.nio.file.Path;
 
 import org.immutables.value.Value;
@@ -31,6 +29,8 @@ import org.immutables.value.Value;
 @Value.Immutable
 public abstract class SigstoreRequest
 {
+    public abstract SigstoreProcessor.Type type();
+
     public abstract Path artifact();
 
     @Value.Derived

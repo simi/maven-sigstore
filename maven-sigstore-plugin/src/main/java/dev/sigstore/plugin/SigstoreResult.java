@@ -24,7 +24,10 @@ import javax.annotation.Nullable;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.cert.CertPath;
+import java.util.Map;
 
+import org.apache.maven.sigstore.model.hashedrekord.Hashedrekord;
+import org.apache.maven.sigstore.model.rekord.Rekord;
 import org.immutables.value.Value;
 
 /**
@@ -55,10 +58,13 @@ public abstract class SigstoreResult
     public abstract CertPath signingCert();
 
     @Nullable
-    public abstract String signingCertContent();
+    public abstract String publicKeyContent();
 
     @Nullable
-    public abstract Path signingCertFile();
+    public abstract Path publicKeyPath();
+
+    @Nullable
+    public abstract Map<String, Object> rekorRecord();
 
     @Nullable
     public abstract String rekorEntryUrl();

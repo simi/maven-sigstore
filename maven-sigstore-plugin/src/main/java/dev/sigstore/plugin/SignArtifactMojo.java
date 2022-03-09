@@ -47,7 +47,6 @@ public class SignArtifactMojo extends AbstractMojo
     @Override
     public void execute() throws MojoExecutionException
     {
-
         List<SigningBundle> signingBundles = new ArrayList<>();
 
         if ( !"pom".equals( project.getPackaging() ) )
