@@ -21,7 +21,10 @@ package dev.sigstore.plugin;
 
 import java.nio.file.Path;
 
+import org.apache.maven.sigstore.model.rekord.Signature;
 import org.immutables.value.Value;
+
+import static org.apache.maven.sigstore.model.rekord.Signature.*;
 
 /**
  * Sign
@@ -29,7 +32,7 @@ import org.immutables.value.Value;
 @Value.Immutable
 public abstract class SigstoreRequest
 {
-    public abstract SigstoreProcessor.Type type();
+    public abstract Format type();
 
     public abstract Path artifact();
 

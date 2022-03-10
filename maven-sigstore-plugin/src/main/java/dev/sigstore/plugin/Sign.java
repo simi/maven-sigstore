@@ -42,7 +42,10 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.sigstore.plugin.SigstoreProcessor.Type;
+import static dev.sigstore.plugin.ImmutableSigstoreResult.Builder;
+import static dev.sigstore.plugin.ImmutableSigstoreResult.builder;
+import static org.apache.maven.sigstore.model.rekord.Signature.Format.PGP;
+import static org.apache.maven.sigstore.model.rekord.Signature.Format.X_509;
 
 /**
  * Sign
@@ -58,7 +61,7 @@ public class Sign
     public static void main( String[] args ) throws Exception
     {
         SigstoreRequest request = ImmutableSigstoreRequest.builder()
-                .type( Type.PGP)
+                .type( X_509 )
                 .emailAddress( "jason@vanzyl.ca" )
                 .artifact( Paths.get(
                         "/Users/jvanzyl/js/provisio/maven-sigstore-site/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar" ) )
@@ -76,18 +79,18 @@ public class Sign
     public void executeSigstoreFlow() throws Exception
     {
         SigstoreProcessor processor = new FulcioProcessor();
-        if ( request.type().equals( Type.X_509 ) )
+        if ( request.type().equals( X_509 ) )
         {
             processor = new FulcioProcessor();
         }
-        else if ( request.type().equals( Type.PGP ) )
+        else if ( request.type().equals( PGP ) )
         {
             processor = new PgpProcessor();
         }
 
         SigstoreResult result = processor.process( request );
         result = submitRecordToRekor( request, result );
-        System.out.println(result.rekorEntryUrl());
+        System.out.println( result.rekorEntryUrl() );
     }
 
     /**
@@ -104,7 +107,7 @@ public class Sign
             ObjectMapper m = new ObjectMapper();
             String json = m.writerWithDefaultPrettyPrinter().writeValueAsString( result.rekorRecord() );
 
-            System.out.println(json);
+            System.out.println( json );
 
             byte[] rekorContent = json.getBytes( StandardCharsets.UTF_8 );
             HttpContent rekorJsonContent = new ByteArrayContent( null, rekorContent );
@@ -126,7 +129,7 @@ public class Sign
 
             LOGGER.info( String.format( "Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl() ) );
 
-            return ImmutableSigstoreResult.builder().from( result )
+            return builder().from( result )
                     .rekorEntryUrl( rekorEntryUrl.toExternalForm() ).build();
         }
         catch ( Exception e )
@@ -140,7 +143,18 @@ public class Sign
     //
     // -----------------------------------------------------------------------------------------------------------------
 
-    public static String b64( byte[] input )
+    public static Builder newResultFrom( SigstoreResult result )
+    {
+        return ImmutableSigstoreResult.builder().from( result );
+    }
+
+    public static String base64( Path path ) throws IOException
+    {
+        return Base64.getEncoder().encodeToString( Files.readAllBytes( path ) );
+    }
+
+
+    public static String base64( byte[] input )
     {
         return Base64.getEncoder().encodeToString( input );
     }

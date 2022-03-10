@@ -13,7 +13,7 @@ import org.bouncycastle.bcpg.BCPGOutputStream;
 import org.bouncycastle.openpgp.PGPPublicKey;
 import org.bouncycastle.openpgp.PGPSecretKey;
 
-import static dev.sigstore.plugin.Sign.b64;
+import static dev.sigstore.plugin.Sign.base64;
 import static dev.sigstore.plugin.Sign.sha256;
 import static java.nio.file.Files.writeString;
 
@@ -35,7 +35,6 @@ public class PgpProcessor extends SigstoreProcessorSupport
         String sha256 = sha256( artifact );
         writeString( sha256Path, sha256);
 
-
         PgpKeyRingLoader kingRingLoader = new PgpKeyRingLoader();
         PGPSecretKey secretKey = kingRingLoader.load();
         PGPPublicKey publicKey = secretKey.getPublicKey();
@@ -48,7 +47,7 @@ public class PgpProcessor extends SigstoreProcessorSupport
         String publicKeyArmorContent = baos.toString();
         Path publicKeyArmorPath = artifact.resolveSibling( artifact.getFileName() + ".pem" );
         writeString( publicKeyArmorPath, publicKeyArmorContent );
-        resultBuilder.publicKeyContent( b64(publicKeyArmorContent.getBytes( StandardCharsets.UTF_8 ) ) );
+        resultBuilder.publicKeyContent( base64(publicKeyArmorContent.getBytes( StandardCharsets.UTF_8 ) ) );
 
         // This will produce a standard PGP armored "${artifact}.asc" file seen in Maven Central
         Path signaturePath = artifact.resolveSibling( artifact.getFileName() + ".asc" );
@@ -56,7 +55,7 @@ public class PgpProcessor extends SigstoreProcessorSupport
         // This will use a series of strategies to find the passphrase
         String signatureContent = artifactSigner.signToString( request.artifact().toFile());
         writeString( signaturePath, signatureContent );
-        resultBuilder.artifactSignatureContent( b64(signatureContent.getBytes( StandardCharsets.UTF_8 )) );
+        resultBuilder.artifactSignatureContent( base64(signatureContent.getBytes( StandardCharsets.UTF_8 )) );
 
         SigstoreResult result = resultBuilder.build();
 

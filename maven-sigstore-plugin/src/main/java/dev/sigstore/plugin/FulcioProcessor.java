@@ -46,8 +46,9 @@ import org.apache.commons.validator.routines.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.sigstore.plugin.Sign.b64;
+import static dev.sigstore.plugin.Sign.base64;
 import static dev.sigstore.plugin.Sign.getHttpTransport;
+import static dev.sigstore.plugin.Sign.newResultFrom;
 import static dev.sigstore.plugin.SignMojo.HTTP_201;
 
 public class FulcioProcessor extends SigstoreProcessorSupport
@@ -93,7 +94,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport
                                 signingAlgorithm ) );
             }
             kpg.initialize( aps, new SecureRandom() );
-            return ImmutableSigstoreResult.builder().from( result ).keyPair( kpg.generateKeyPair() ).build();
+            return newResultFrom( result ).keyPair( kpg.generateKeyPair() ).build();
         }
         catch ( Exception e )
         {
@@ -159,9 +160,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport
                         String.format( "identity provider '%s' reports email address '%s' has not been verified",
                                 parsedIdToken.getPayload().getIssuer(), request.emailAddress() ) );
             }
-
-            return ImmutableSigstoreResult.builder().from( result ).emailAddress( emailFromIDToken )
-                    .rawIdToken( idTokenString ).build();
+            return newResultFrom( result ).emailAddress( emailFromIDToken ).rawIdToken( idTokenString ).build();
         }
         catch ( Exception e )
         {
@@ -203,8 +202,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport
             }
             sig.initSign( privKey );
             sig.update( emailAddress.getBytes() );
-            return ImmutableSigstoreResult.builder().from( result )
-                    .signedEmailAddress( Base64.getEncoder().encodeToString( sig.sign() ) ).build();
+            return newResultFrom( result ).signedEmailAddress( base64( sig.sign() ) ).build();
         }
         catch ( Exception e )
         {
@@ -277,8 +275,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport
             {
                 throw new IOException( "no certificates were found in response from Fulcio instance" );
             }
-            return ImmutableSigstoreResult.builder().from( result )
-                    .signingCert( cf.generateCertPath( certList ) ).build();
+            return newResultFrom( result ).signingCert( cf.generateCertPath( certList ) ).build();
         }
         catch ( Exception e )
         {
@@ -308,9 +305,9 @@ public class FulcioProcessor extends SigstoreProcessorSupport
             String encodedCertText = new String( encoder.encode( rawCrtText ) );
             String prettifiedCert = "-----BEGIN CERTIFICATE-----" + lineSeparator + encodedCertText + lineSeparator
                     + "-----END CERTIFICATE-----";
-            String b64PublicKey = b64( prettifiedCert.getBytes( StandardCharsets.UTF_8 ) );
+            String b64PublicKey = base64( prettifiedCert.getBytes( StandardCharsets.UTF_8 ) );
             Files.writeString( outputSigningCert.toPath(), prettifiedCert );
-            return ImmutableSigstoreResult.builder().from( result ).publicKeyContent( b64PublicKey ).build();
+            return newResultFrom( result ).publicKeyContent( b64PublicKey ).build();
         }
         catch ( Exception e )
         {
@@ -337,8 +334,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport
             byte[] artifactSignatureBytes = signature.sign();
             String b64ArtifactSignatureContent = Base64.getEncoder().encodeToString( artifactSignatureBytes );
             Files.writeString( request.artifactSignature(), b64ArtifactSignatureContent );
-            return ImmutableSigstoreResult.builder().from( result )
-                    .artifactSignatureContent( b64ArtifactSignatureContent ).build();
+            return newResultFrom( result ).artifactSignatureContent( b64ArtifactSignatureContent ).build();
         }
         catch ( Exception e )
         {
