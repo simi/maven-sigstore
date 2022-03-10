@@ -87,10 +87,9 @@ public class Sign
         {
             processor = new PgpProcessor();
         }
-
         SigstoreResult result = processor.process( request );
         result = submitRecordToRekor( request, result );
-        System.out.println( result.rekorEntryUrl() );
+        LOGGER.info( String.format( "Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl() ) );
     }
 
     /**
@@ -106,16 +105,12 @@ public class Sign
             HttpTransport httpTransport = getHttpTransport( request );
             ObjectMapper m = new ObjectMapper();
             String json = m.writerWithDefaultPrettyPrinter().writeValueAsString( result.rekorRecord() );
-
-            System.out.println( json );
-
             byte[] rekorContent = json.getBytes( StandardCharsets.UTF_8 );
             HttpContent rekorJsonContent = new ByteArrayContent( null, rekorContent );
             ByteArrayOutputStream rekorStream = new ByteArrayOutputStream();
             rekorJsonContent.writeTo( rekorStream );
             GenericUrl rekorPostUrl = new GenericUrl( request.rekorInstanceURL() + "/api/v1/log/entries" );
-            HttpRequest rekorReq =
-                    httpTransport.createRequestFactory().buildPostRequest( rekorPostUrl, rekorJsonContent );
+            HttpRequest rekorReq = httpTransport.createRequestFactory().buildPostRequest( rekorPostUrl, rekorJsonContent );
             rekorReq.getHeaders().set( "Accept", "application/json" );
             rekorReq.getHeaders().set( "Content-Type", "application/json" );
 
@@ -126,9 +121,6 @@ public class Sign
             }
 
             URL rekorEntryUrl = new URL( new URL( request.rekorInstanceURL() ), rekorResp.getHeaders().getLocation() );
-
-            LOGGER.info( String.format( "Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl() ) );
-
             return builder().from( result )
                     .rekorEntryUrl( rekorEntryUrl.toExternalForm() ).build();
         }
@@ -152,7 +144,6 @@ public class Sign
     {
         return Base64.getEncoder().encodeToString( Files.readAllBytes( path ) );
     }
-
 
     public static String base64( byte[] input )
     {

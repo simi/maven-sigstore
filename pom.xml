@@ -190,7 +190,7 @@ under the License.
       </dependency>
       <dependency>
         <groupId>com.google.api-client</groupId>
-        <artifactId>google-api-client-gson</artifactId>
+        <artifactId>google-api-client-jackson2</artifactId>
         <version>1.33.0</version>
       </dependency>
       <dependency>
