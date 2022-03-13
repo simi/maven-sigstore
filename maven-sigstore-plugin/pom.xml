@@ -48,6 +48,16 @@ under the License.
       <version>1.7.36</version>
     </dependency>
     <dependency>
+      <groupId>com.github.mwiede</groupId>
+      <artifactId>jsch</artifactId>
+      <version>0.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.zeroturnaround</groupId>
+      <artifactId>zt-exec</artifactId>
+      <version>1.12</version>
+    </dependency>
+    <dependency>
       <groupId>io.takari</groupId>
       <artifactId>jpgp</artifactId>
       <version>1.0.7-SNAPSHOT</version>
@@ -92,7 +102,7 @@ under the License.
     </dependency>
     <dependency>
       <groupId>com.google.api-client</groupId>
-      <artifactId>google-api-client-gson</artifactId>
+      <artifactId>google-api-client-jackson2</artifactId>
     </dependency>
     <dependency>
       <groupId>com.google.oauth-client</groupId>

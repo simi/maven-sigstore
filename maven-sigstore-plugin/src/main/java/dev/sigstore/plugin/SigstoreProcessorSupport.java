@@ -1,3 +1,4 @@
+
 package dev.sigstore.plugin;
 
 import java.util.HashMap;
