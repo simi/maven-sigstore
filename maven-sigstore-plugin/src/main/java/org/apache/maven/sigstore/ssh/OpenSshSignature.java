@@ -1,33 +1,28 @@
 package org.apache.maven.sigstore.ssh;
 
 import static dev.sigstore.plugin.Sign.base64;
-import static dev.sigstore.plugin.Sign.base64Mime;
 import static dev.sigstore.plugin.Sign.sha512;
 import static java.lang.String.format;
 import static java.nio.file.Files.newBufferedReader;
-import static java.nio.file.Files.newBufferedWriter;
 import static java.nio.file.Files.readString;
+import static java.nio.file.Files.writeString;
 import static java.nio.file.Paths.get;
 import static java.util.Base64.getDecoder;
 import static org.bouncycastle.crypto.util.OpenSSHPrivateKeyUtil.parsePrivateKeyBlob;
 import static org.bouncycastle.crypto.util.OpenSSHPublicKeyUtil.encodePublicKey;
 import static org.bouncycastle.crypto.util.OpenSSHPublicKeyUtil.parsePublicKey;
 
-import com.jcraft.jsch.bc.SignatureEd25519;
-import com.jcraft.jsch.jce.SHA512;
-import dev.sigstore.plugin.Sign;
+//import com.jcraft.jsch.bc.SignatureEd25519;
 import java.io.ByteArrayOutputStream;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.bouncycastle.crypto.Signer;
 import org.bouncycastle.crypto.digests.SHA512Digest;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.bouncycastle.crypto.signers.Ed25519Signer;
 import org.bouncycastle.crypto.signers.RSADigestSigner;
 import org.bouncycastle.util.io.pem.PemReader;
-import org.bouncycastle.util.io.pem.PemWriter;
 
 // https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.sshsig
 // https://github.com/sigstore/rekor/blob/main/pkg/pki/ssh/README.md
@@ -76,20 +71,12 @@ public class OpenSshSignature {
 
   public void sign(byte[] input) throws Exception {
 
-    SignatureEd25519 jsig;
-
     // Load private key
     AsymmetricKeyParameter privateKeyParameters;
     try (Reader reader = newBufferedReader(privateKey); PemReader pemReader = new PemReader(reader)) {
       byte[] privateKeyContent = pemReader.readPemObject().getContent();
       privateKeyParameters = parsePrivateKeyBlob(privateKeyContent);
-
-      jsig = new SignatureEd25519();
-      jsig.init();
-      jsig.setPrvKey(privateKeyContent);
     }
-
-    //System.out.println(privateKeyParameters.getClass());
 
     // Load public key
     String publicKeyContent = readString(publicKey);
@@ -199,33 +186,18 @@ public class OpenSshSignature {
     signer.update(signatureContent, 0, signatureContent.length);
     byte[] signature = signer.generateSignature();
 
-    System.out.println(base64(signature));
-
-    //System.out.println(signature[1]);
-
-
-    //jsig.update(signatureContent);
-    //byte[] signature = jsig.sign();
-
-    // Hash the message
-    //byte[] hash = sha512(input);
-    //System.out.println(base64(hash));
-    //jsig.update(hash);
-    //byte[] signedHashOfInput = jsig.sign();
-
     // Verify
-    //verifier.init(false, publicKeyParameters);
-    //verifier.update(signatureContent, 0, signatureContent.length);
-    //boolean verified = verifier.verifySignature(signature);
-    //System.out.println("verified: " + verified);
+    verifier.init(false, publicKeyParameters);
+    verifier.update(signatureContent, 0, signatureContent.length);
+    boolean verified = verifier.verifySignature(signature);
+    System.out.println("verified: " + verified);
 
     // Add signature to signatureBlob
     signatureBlob.write(signature);
 
     String header = "-----BEGIN SSH SIGNATURE-----";
     String footer = "-----END SSH SIGNATURE-----";
-    
-    /*
+
     StringBuilder sb = new StringBuilder();
     String mime = base64(signatureBlob.toByteArray());
     // spec says 76 but it appears to be 70?
@@ -240,17 +212,9 @@ public class OpenSshSignature {
         sb.append(segment).append('\n');
       }
     }
-     */
 
-    String sb = base64Mime(signatureBlob.toByteArray());
-
-    //System.out.println(sb);
-
-    Files.writeString(get("/Users/jvanzyl/js/security/jssh/roundtrip0/file.txt.sig2"), format("%s%n%s%n%s", header, sb, footer));
-    Files.writeString(get("/Users/jvanzyl/js/security/jssh/roundtrip0/file.txt.sig2n"), sb);
-    //System.out.println(Sign.base64(os.toByteArray()));
-
-
+    writeString(get("/Users/jvanzyl/js/security/jssh/roundtrip0/file.txt.sig2"),
+        format("%s%n%s%n%s%n", header, sb, footer));
   }
 
   public static void main(String[] args) throws Exception {
