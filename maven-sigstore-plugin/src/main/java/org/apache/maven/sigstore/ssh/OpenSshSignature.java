@@ -12,7 +12,6 @@ import static org.bouncycastle.crypto.util.OpenSSHPrivateKeyUtil.parsePrivateKey
 import static org.bouncycastle.crypto.util.OpenSSHPublicKeyUtil.encodePublicKey;
 import static org.bouncycastle.crypto.util.OpenSSHPublicKeyUtil.parsePublicKey;
 
-//import com.jcraft.jsch.bc.SignatureEd25519;
 import java.io.ByteArrayOutputStream;
 import java.io.Reader;
 import java.nio.file.Files;
@@ -30,6 +29,8 @@ import org.bouncycastle.util.io.pem.PemReader;
 // https://stackoverflow.com/questions/66476780/sign-verify-json-using-ed25519-keys-with-bouncy-castle-java
 // https://www.agwa.name/blog/post/ssh_signatures
 // https://blog.sigstore.dev/ssh-is-the-new-gpg-74b3c6cc51c0
+
+// https://datatracker.ietf.org/doc/html/rfc4253
 
 public class OpenSshSignature {
 
@@ -84,9 +85,6 @@ public class OpenSshSignature {
     String publicKeyBody = publicKeyContent.split(" ")[1];
     AsymmetricKeyParameter publicKeyParameters = parsePublicKey(getDecoder().decode(publicKeyBody));
     byte[] encodedPublicKey = encodePublicKey(publicKeyParameters);
-
-    //System.out.println("publicKeyType = " + publicKeyType);
-    //System.out.println("publicKeyBody = " + publicKeyBody);
 
     // #define   MAGIC_PREAMBLE "SSHSIG"
     // #define   SIG_VERSION    0x01
