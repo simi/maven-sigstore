@@ -60,7 +60,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     SigstoreResult result = ImmutableSigstoreResult.builder().build();
     result = acquireKeyPair(request, result);
     result = getIDToken(request, result);
-    result = signEmailAddress(request, result);
+    result = signSubject(request, result);
     result = retrieveFulcioSigningCertificate(request, result);
     result = saveFulcioSigningCertificateToDisk(request, result);
     result = generateArtifactSignature(request, result);
@@ -132,11 +132,6 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       }
 
       // So this verifies
-      System.out.println(parsedIdToken.getPayload().toPrettyString().getBytes(StandardCharsets.UTF_8));
-      System.out.println(base64(parsedIdToken.getPayload().toPrettyString().getBytes(StandardCharsets.UTF_8)));
-      //System.out.println(base64(idTokenString.getBytes(StandardCharsets.UTF_8)));
-
-      System.out.println("3");
       String emailFromIDToken = (String) parsedIdToken.getPayload().get("email");
       if (emailFromIDToken != null) {
         System.out.println("emailFromIDToken = " + emailFromIDToken);
@@ -154,7 +149,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         }
         return newResultFrom(result).emailAddress(emailFromIDToken).rawIdToken(idTokenString).build();
       } else {
-        return newResultFrom(result).emailAddress(request.emailAddress()).rawIdToken(idTokenString).build();
+        String subject = parsedIdToken.getPayload().getSubject();
+        return newResultFrom(result).emailAddress(subject).rawIdToken(idTokenString).build();
       }
     } catch (Exception e) {
       throw new Exception("Error signing email address:", e);
@@ -167,7 +163,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
    * @return base64 encoded String containing the signature for the provided email address
    * @throws Exception If any exception happened during the signing process
    */
-  private SigstoreResult signEmailAddress(SigstoreRequest request, SigstoreResult result) throws Exception {
+  private SigstoreResult signSubject(SigstoreRequest request, SigstoreResult result) throws Exception {
     PrivateKey privKey = result.keyPair().getPrivate();
     String emailAddress = result.emailAddress();
 
