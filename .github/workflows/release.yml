@@ -1,3 +1,6 @@
+# ACTIONS_ID_TOKEN_REQUEST_URL: The URL for GitHub's OIDC provider.
+# ACTIONS_ID_TOKEN_REQUEST_TOKEN: Bearer token for the request to the OIDC provider.
+
 on:
   workflow_dispatch:
 
@@ -7,8 +10,6 @@ jobs:
       contents: read
       id-token: write
   job:
-    # ACTIONS_ID_TOKEN_REQUEST_URL: The URL for GitHub's OIDC provider.
-    # ACTIONS_ID_TOKEN_REQUEST_TOKEN: Bearer token for the request to the OIDC provider.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
