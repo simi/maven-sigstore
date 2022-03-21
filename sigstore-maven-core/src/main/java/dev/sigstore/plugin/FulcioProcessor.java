@@ -105,7 +105,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       String idTokenString;
       String idTokenEnvar = System.getenv("ID_TOKEN");
       System.out.println("idTokenEnvar = " + idTokenEnvar);
-      if(idTokenEnvar != null) {
+      if (idTokenEnvar != null) {
         idTokenString = idTokenEnvar;
       } else {
         final String idTokenKey = "id_token";
@@ -135,20 +135,26 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
 
       System.out.println("3");
       String emailFromIDToken = (String) parsedIdToken.getPayload().get("email");
-      System.out.println("4");
-      Boolean emailVerified = (Boolean) parsedIdToken.getPayload().get("email_verified");
-      System.out.println("5");
-      if (expectedEmailAddress != null && !emailFromIDToken.equals(expectedEmailAddress)) {
-        throw new InvalidObjectException(
-            format("email in ID token '%s' does not match address specified to plugin '%s'",
-                emailFromIDToken, request.emailAddress()));
+      if (emailFromIDToken != null) {
+        System.out.println("emailFromIDToken = " + emailFromIDToken);
+        System.out.println("4");
+        Boolean emailVerified = (Boolean) parsedIdToken.getPayload().get("email_verified");
+        System.out.println(emailVerified);
+        System.out.println("5");
+        if (expectedEmailAddress != null && !emailFromIDToken.equals(expectedEmailAddress)) {
+          throw new InvalidObjectException(
+              format("email in ID token '%s' does not match address specified to plugin '%s'",
+                  emailFromIDToken, request.emailAddress()));
 
-      } else if (Boolean.FALSE.equals(emailVerified)) {
-        throw new InvalidObjectException(
-            format("identity provider '%s' reports email address '%s' has not been verified",
-                parsedIdToken.getPayload().getIssuer(), request.emailAddress()));
+        } else if (Boolean.FALSE.equals(emailVerified)) {
+          throw new InvalidObjectException(
+              format("identity provider '%s' reports email address '%s' has not been verified",
+                  parsedIdToken.getPayload().getIssuer(), request.emailAddress()));
+        }
+        return newResultFrom(result).emailAddress(emailFromIDToken).rawIdToken(idTokenString).build();
+      } else {
+        return newResultFrom(result).emailAddress(request.emailAddress()).rawIdToken(idTokenString).build();
       }
-      return newResultFrom(result).emailAddress(emailFromIDToken).rawIdToken(idTokenString).build();
     } catch (Exception e) {
       throw new Exception("Error signing email address:", e);
     }
