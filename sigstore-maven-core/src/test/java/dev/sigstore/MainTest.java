@@ -15,6 +15,7 @@ public class MainTest {
   @Test
   public void validateExecutionInGitHubActions() throws Exception {
     String basedir = new File("").getAbsolutePath();
+    System.out.println("basedir = " + basedir);
     Path artifact = Paths.get(basedir, "pom.xml");
     SigstoreRequest request = ImmutableSigstoreRequest.builder()
         .type(X_509)
