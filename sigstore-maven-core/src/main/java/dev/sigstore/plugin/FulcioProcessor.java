@@ -125,21 +125,24 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         }
         idTokenString = (String) memStoreFactory.getDataStore("user").get(idTokenKey);
       }
-
-      System.out.println("idTokenString = " + idTokenString);
-
+      System.out.println("1");
       IdTokenVerifier idTokenVerifier = new IdTokenVerifier();
       IdToken parsedIdToken = IdToken.parse(jsonFactory, idTokenString);
+      System.out.println("2");
       if (!idTokenVerifier.verify(parsedIdToken)) {
         throw new InvalidObjectException("id token could not be verified");
       }
 
+      System.out.println("3");
       String emailFromIDToken = (String) parsedIdToken.getPayload().get("email");
+      System.out.println("4");
       Boolean emailVerified = (Boolean) parsedIdToken.getPayload().get("email_verified");
+      System.out.println("5");
       if (expectedEmailAddress != null && !emailFromIDToken.equals(expectedEmailAddress)) {
         throw new InvalidObjectException(
             format("email in ID token '%s' does not match address specified to plugin '%s'",
                 emailFromIDToken, request.emailAddress()));
+
       } else if (Boolean.FALSE.equals(emailVerified)) {
         throw new InvalidObjectException(
             format("identity provider '%s' reports email address '%s' has not been verified",
