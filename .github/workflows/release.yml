@@ -23,4 +23,4 @@ jobs:
         run: |
           export ID_TOKEN=$(curl -sLS "${ACTIONS_ID_TOKEN_REQUEST_URL}" -H "User-Agent: actions/oidc-client" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" | jq -r '.value')
           echo $ID_TOKEN
-          mvn -B clean test
+          mvn -B clean test -e

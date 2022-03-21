@@ -126,6 +126,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         idTokenString = (String) memStoreFactory.getDataStore("user").get(idTokenKey);
       }
 
+      System.out.println("idTokenString = " + idTokenString);
+
       IdTokenVerifier idTokenVerifier = new IdTokenVerifier();
       IdToken parsedIdToken = IdToken.parse(jsonFactory, idTokenString);
       if (!idTokenVerifier.verify(parsedIdToken)) {
