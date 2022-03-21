@@ -165,31 +165,32 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
    * @throws Exception If any exception happened during the signing process
    */
   private SigstoreResult signSubject(SigstoreRequest request, SigstoreResult result) throws Exception {
-    PrivateKey privKey = result.keyPair().getPrivate();
-    String emailAddress = result.emailAddress();
+    PrivateKey privateKey = result.keyPair().getPrivate();
+    String subject = result.emailAddress();
 
     System.out.println("request.emailAddress() = " + request.emailAddress());
 
+    //EmailValidator ev = EmailValidator.getInstance();
+    //if (!ev.isValid(emailAddress)) {
+    //  throw new IllegalArgumentException(
+    //      format("email address specified '%s' is invalid", emailAddress));
+    //}
+
     try {
-      EmailValidator ev = EmailValidator.getInstance();
-      if (!ev.isValid(emailAddress)) {
-        throw new IllegalArgumentException(
-            format("email address specified '%s' is invalid", emailAddress));
-      }
-      logger.info(format("signing email address '%s' as proof of possession of private key", emailAddress));
+      logger.info(format("signing subject '%s' as proof of possession of private key", subject));
       Signature sig;
-      if ("EC".equals(privKey.getAlgorithm())) {
+      if ("EC".equals(privateKey.getAlgorithm())) {
         sig = Signature.getInstance("SHA256withECDSA");
       } else {
         throw new NoSuchAlgorithmException(
             format("unable to generate signature for signing algorithm %s",
                 request.signingAlgorithm()));
       }
-      sig.initSign(privKey);
-      sig.update(emailAddress.getBytes());
+      sig.initSign(privateKey);
+      sig.update(subject.getBytes());
       return newResultFrom(result).signedEmailAddress(base64(sig.sign())).build();
     } catch (Exception e) {
-      throw new Exception(format("Error signing '%s': %s", emailAddress, e.getMessage()), e);
+      throw new Exception(format("Error signing '%s': %s", subject, e.getMessage()), e);
     }
   }
 
