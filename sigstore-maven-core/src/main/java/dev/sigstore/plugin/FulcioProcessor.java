@@ -125,10 +125,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         }
         idTokenString = (String) memStoreFactory.getDataStore("user").get(idTokenKey);
       }
-      System.out.println("1");
       IdTokenVerifier idTokenVerifier = new IdTokenVerifier();
       IdToken parsedIdToken = IdToken.parse(jsonFactory, idTokenString);
-      System.out.println("2");
       if (!idTokenVerifier.verify(parsedIdToken)) {
         throw new InvalidObjectException("id token could not be verified");
       }
@@ -142,10 +140,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       String emailFromIDToken = (String) parsedIdToken.getPayload().get("email");
       if (emailFromIDToken != null) {
         System.out.println("emailFromIDToken = " + emailFromIDToken);
-        System.out.println("4");
         Boolean emailVerified = (Boolean) parsedIdToken.getPayload().get("email_verified");
         System.out.println(emailVerified);
-        System.out.println("5");
         if (expectedEmailAddress != null && !emailFromIDToken.equals(expectedEmailAddress)) {
           throw new InvalidObjectException(
               format("email in ID token '%s' does not match address specified to plugin '%s'",
@@ -174,6 +170,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
   private SigstoreResult signEmailAddress(SigstoreRequest request, SigstoreResult result) throws Exception {
     PrivateKey privKey = result.keyPair().getPrivate();
     String emailAddress = result.emailAddress();
+
+    System.out.println("request.emailAddress() = " + request.emailAddress());
 
     try {
       EmailValidator ev = EmailValidator.getInstance();

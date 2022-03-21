@@ -17,7 +17,7 @@ public abstract class HashedRekordGenerator implements SigstoreProcessor {
   public static Map<String, Object> hashrekord(SigstoreRequest request, SigstoreResult result) throws Exception {
     // {
     //   "apiVersion" : "0.0.1",
-    //   "kind" : "rekord",
+    //   "kind" : "hashedrekord",
     //   "spec" : {
     //     "signature" : {
     //       "format" : "x509",
@@ -30,8 +30,7 @@ public abstract class HashedRekordGenerator implements SigstoreProcessor {
     //       "hash" : {
     //         "algorithm" : "sha256",
     //         "value" : "916ea454120422182823bd4bca3331f5a544d90914c9992362f1b10b56b268c4"
-    //       },
-    //       "content" : "base64 <content>"
+    //       }
     //     }
     //   }
     // }
