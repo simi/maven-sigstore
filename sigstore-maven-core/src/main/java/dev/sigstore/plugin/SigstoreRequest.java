@@ -19,6 +19,8 @@ package dev.sigstore.plugin;
  * under the License.
  */
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import javax.annotation.Nullable;
@@ -35,6 +37,7 @@ public abstract class SigstoreRequest
 {
     public abstract Format type();
 
+    @Nullable
     public abstract Path artifact();
 
     @Value.Derived

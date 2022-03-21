@@ -24,11 +24,11 @@ under the License.
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.apache.maven.sigstore</groupId>
-    <artifactId>maven-sigstore</artifactId>
+    <artifactId>sigstore-maven</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
-  <artifactId>maven-sigstore-model</artifactId>
-  <name>Maven Sigstore Model</name>
+  <artifactId>sigstore-maven-model</artifactId>
+  <name>Sigstore Maven Model</name>
 
   <dependencies>
     <dependency>

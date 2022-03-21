@@ -22,7 +22,7 @@ package dev.sigstore.plugin;
 import static dev.sigstore.plugin.ImmutableSigstoreResult.Builder;
 import static dev.sigstore.plugin.ImmutableSigstoreResult.builder;
 import static java.lang.String.format;
-import static java.nio.file.Paths.*;
+import static java.nio.file.Paths.get;
 import static org.apache.maven.sigstore.model.rekord.Signature.Format.PGP;
 import static org.apache.maven.sigstore.model.rekord.Signature.Format.SSH;
 import static org.apache.maven.sigstore.model.rekord.Signature.Format.X_509;
@@ -41,7 +41,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.Base64;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -59,22 +58,6 @@ public class Sign {
 
   private SigstoreRequest request;
   private SigstoreResult result;
-
-  public static void main(String[] args) throws Exception {
-    SigstoreRequest request = ImmutableSigstoreRequest.builder()
-        .type(SSH)
-        .emailAddress("jason@vanzyl.ca")
-        .artifact(get("/Users/jvanzyl/js/provisio/maven-sigstore-site/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar"))
-        //.artifact( Paths.get( "/Users/jvanzyl/.ssh/config" ) )
-        //.artifact( Paths.get( "/Users/jvanzyl/js/provisio/maven-sigstore-site/hello.txt" ) )
-        .sshRequest(ImmutableSshRequest.builder()
-            .privateKey(get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519"))
-            .publicKey(get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519.pub")).build())
-        .build();
-
-    Sign signer = new Sign(request);
-    signer.executeSigstoreFlow();
-  }
 
   public Sign(SigstoreRequest request) {
     this.request = request;

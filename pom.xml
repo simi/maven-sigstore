@@ -29,17 +29,17 @@ under the License.
   </parent>
 
   <groupId>org.apache.maven.sigstore</groupId>
-  <artifactId>maven-sigstore</artifactId>
+  <artifactId>sigstore-maven</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Maven Sigstore</name>
+  <name>Sigstore Maven</name>
   <description>Tooling to help Maven collaborate with the Sigstore ecosystem.</description>
 
   <modules>
-    <module>maven-sigstore-core</module>
-    <module>maven-sigstore-model</module>
-    <module>maven-sigstore-plugin</module>
+    <module>sigstore-maven-core</module>
+    <module>sigstore-maven-model</module>
+    <module>sigstore-maven-plugin</module>
   </modules>
 
   <!-- Preparation for donation to Apache
@@ -135,12 +135,12 @@ under the License.
     <dependencies>
       <dependency>
         <groupId>org.apache.maven.sigstore</groupId>
-        <artifactId>maven-sigstore-core</artifactId>
+        <artifactId>sigstore-maven-core</artifactId>
         <version>0.0.1-SNAPSHOT</version>
       </dependency>
       <dependency>
         <groupId>org.apache.maven.sigstore</groupId>
-        <artifactId>maven-sigstore-model</artifactId>
+        <artifactId>sigstore-maven-model</artifactId>
         <version>0.0.1-SNAPSHOT</version>
       </dependency>
       <dependency>
