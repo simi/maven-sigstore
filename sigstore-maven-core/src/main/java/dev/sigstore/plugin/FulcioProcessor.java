@@ -133,6 +133,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         throw new InvalidObjectException("id token could not be verified");
       }
 
+      System.out.println(base64(idTokenString.getBytes(StandardCharsets.UTF_8)));
+
       System.out.println("3");
       String emailFromIDToken = (String) parsedIdToken.getPayload().get("email");
       if (emailFromIDToken != null) {
@@ -252,7 +254,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       return newResultFrom(result).signingCert(cf.generateCertPath(certList)).build();
     } catch (Exception e) {
       throw new Exception(
-          format("Error obtaining signing certificate from Fulcio @%s:",
+          format("Error obtaining signing certificate from Fulcio @ %s:",
               request.fulcioInstanceURL()), e);
     }
   }
