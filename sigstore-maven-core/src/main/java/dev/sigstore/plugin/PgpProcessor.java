@@ -1,21 +1,20 @@
 package dev.sigstore.plugin;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.util.Map;
+import static dev.sigstore.plugin.Sign.base64;
+import static dev.sigstore.plugin.Sign.sha256;
+import static java.nio.file.Files.writeString;
 
 import dev.sigstore.plugin.ImmutableSigstoreResult.Builder;
 import io.takari.jpgp.PgpArtifactSigner;
 import io.takari.jpgp.PgpKeyRingLoader;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.Map;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
 import org.bouncycastle.bcpg.BCPGOutputStream;
 import org.bouncycastle.openpgp.PGPPublicKey;
 import org.bouncycastle.openpgp.PGPSecretKey;
-
-import static dev.sigstore.plugin.Sign.base64;
-import static dev.sigstore.plugin.Sign.sha256;
-import static java.nio.file.Files.writeString;
 
 public class PgpProcessor extends SigstoreProcessorSupport
 {
