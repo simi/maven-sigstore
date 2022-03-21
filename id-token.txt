@@ -1,0 +1,25 @@
+{
+  "aud": "https://github.com/jvanzyl",
+  "exp": 1647839128,
+  "iat": 1647838828,
+  "iss": "https://token.actions.githubusercontent.com",
+  "jti": "d4aa6f0f-9c66-405d-9f8b-c0d5b28f9906",
+  "nbf": 1647838228,
+  "sub": "repo:jvanzyl/maven-sigstore:ref:refs/heads/main",
+  "ref": "refs/heads/main",
+  "sha": "d72b0a7043abf1a44b50a4185dbf16a7e70bdc9b",
+  "repository": "jvanzyl/maven-sigstore",
+  "repository_owner": "jvanzyl",
+  "run_id": "2014230760",
+  "run_number": "19",
+  "run_attempt": "1",
+  "actor": "jvanzyl",
+  "workflow": "release",
+  "head_ref": "",
+  "base_ref": "",
+  "event_name": "workflow_dispatch",
+  "ref_type": "branch",
+  "job_workflow_ref": "jvanzyl/maven-sigstore/.github/workflows/release.yml@refs/heads/main"
+}
+
+

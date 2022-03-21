@@ -10,6 +10,7 @@ public class Main {
     SigstoreRequest request = ImmutableSigstoreRequest.builder()
         .type(X_509)
         .emailAddress("jason@vanzyl.ca")
+        .artifact(get("pom.xml"))
         //.artifact(get("/Users/jvanzyl/js/provisio/maven-sigstore-site/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar"))
         //.artifact( Paths.get( "/Users/jvanzyl/.ssh/config" ) )
         //.artifact( Paths.get( "/Users/jvanzyl/js/provisio/maven-sigstore-site/hello.txt" ) )
