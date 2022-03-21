@@ -133,7 +133,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         throw new InvalidObjectException("id token could not be verified");
       }
 
-      System.out.println(base64(idTokenString.getBytes(StandardCharsets.UTF_8)));
+      System.out.println(base64(parsedIdToken.getPayload().toPrettyString().getBytes(StandardCharsets.UTF_8)));
+      //System.out.println(base64(idTokenString.getBytes(StandardCharsets.UTF_8)));
 
       System.out.println("3");
       String emailFromIDToken = (String) parsedIdToken.getPayload().get("email");
