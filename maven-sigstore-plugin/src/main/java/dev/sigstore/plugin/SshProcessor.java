@@ -6,11 +6,13 @@ import static java.nio.file.Files.writeString;
 
 import dev.sigstore.plugin.ImmutableSigstoreResult.Builder;
 import java.io.FileReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import org.apache.maven.sigstore.ssh.OpenSshSignature;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.bouncycastle.crypto.util.OpenSSHPrivateKeyUtil;
 import org.bouncycastle.util.io.pem.PemReader;
@@ -29,6 +31,10 @@ public class SshProcessor extends SigstoreProcessorSupport {
 
   @Override
   public SigstoreResult process(SigstoreRequest request) throws Exception {
+
+    Path privateKey = request.sshRequest().privateKey();
+    Path publicKey = request.sshRequest().publicKey();
+
     Builder resultBuilder = ImmutableSigstoreResult.builder();
 
     Path artifact = request.artifact();
@@ -39,27 +45,28 @@ public class SshProcessor extends SigstoreProcessorSupport {
 
     // Load private key
     AsymmetricKeyParameter privateKeyParameters = null;
-    String pathPrivateKey = "/Users/jvanzyl/.ssh/id_ed25519";
-    try (FileReader fileReader = new FileReader(pathPrivateKey);
+    try (Reader fileReader = Files.newBufferedReader(privateKey);
         PemReader pemReader = new PemReader(fileReader)) {
       byte[] privateKeyContent = pemReader.readPemObject().getContent();
       privateKeyParameters = OpenSSHPrivateKeyUtil.parsePrivateKeyBlob(privateKeyContent);
     }
 
     // Load public key, Rekor just consumes the contents of the files and deals with it
-    Path pathPublicKey = Paths.get("/Users/jvanzyl/.ssh/id_ed25519.pub");
-    String publicKeyBody = Files.readString(pathPublicKey);
+    String publicKeyBody = Files.readString(publicKey);
 
     Path publicKeyPath = artifact.resolveSibling(artifact.getFileName() + ".sshpub");
     String publicKeyContent = base64(publicKeyBody.getBytes(StandardCharsets.UTF_8));
     writeString(publicKeyPath, publicKeyContent);
     resultBuilder.publicKeyContent(publicKeyContent);
 
+    OpenSshSignature sshSignature = new OpenSshSignature(privateKey, publicKey);
+
     // ssh-keygen -Y sign -n file -f ${HOME}/.ssh/id_ed25519 ${file}
     String output = new ProcessExecutor().command(
             "ssh-keygen", "-Y", "sign", "-n", "file", "-f", "/Users/jvanzyl/.ssh/id_ed25519", artifact.toString())
         .readOutput(true).execute()
         .outputUTF8();
+
     Path signaturePath = artifact.resolveSibling(artifact.getFileName() + ".sig");
     String signatureContent = Files.readString(signaturePath);
     resultBuilder.artifactSignatureContent(base64(signatureContent.getBytes(StandardCharsets.UTF_8)));

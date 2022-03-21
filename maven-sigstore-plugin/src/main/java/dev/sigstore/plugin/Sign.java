@@ -22,6 +22,7 @@ package dev.sigstore.plugin;
 import static dev.sigstore.plugin.ImmutableSigstoreResult.Builder;
 import static dev.sigstore.plugin.ImmutableSigstoreResult.builder;
 import static java.lang.String.format;
+import static java.nio.file.Paths.*;
 import static org.apache.maven.sigstore.model.rekord.Signature.Format.PGP;
 import static org.apache.maven.sigstore.model.rekord.Signature.Format.SSH;
 import static org.apache.maven.sigstore.model.rekord.Signature.Format.X_509;
@@ -63,9 +64,12 @@ public class Sign {
     SigstoreRequest request = ImmutableSigstoreRequest.builder()
         .type(SSH)
         .emailAddress("jason@vanzyl.ca")
-        .artifact(Paths.get("/Users/jvanzyl/js/provisio/maven-sigstore-site/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar"))
+        .artifact(get("/Users/jvanzyl/js/provisio/maven-sigstore-site/maven-sigstore-plugin-0.0.1-SNAPSHOT.jar"))
         //.artifact( Paths.get( "/Users/jvanzyl/.ssh/config" ) )
         //.artifact( Paths.get( "/Users/jvanzyl/js/provisio/maven-sigstore-site/hello.txt" ) )
+        .sshRequest(ImmutableSshRequest.builder()
+            .privateKey(get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519"))
+            .publicKey(get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519.pub")).build())
         .build();
 
     Sign signer = new Sign(request);
@@ -76,7 +80,7 @@ public class Sign {
     this.request = request;
   }
 
-  public void executeSigstoreFlow() throws Exception {
+  public SigstoreResult executeSigstoreFlow() throws Exception {
     SigstoreProcessor processor = new FulcioProcessor();
     if (request.type().equals(X_509)) {
       processor = new FulcioProcessor();
@@ -88,6 +92,7 @@ public class Sign {
     SigstoreResult result = processor.process(request);
     result = submitRecordToRekor(request, result);
     LOGGER.info(format("Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl()));
+    return result;
   }
 
   /**

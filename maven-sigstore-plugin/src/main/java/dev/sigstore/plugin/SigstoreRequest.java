@@ -21,6 +21,7 @@ package dev.sigstore.plugin;
 
 import java.nio.file.Path;
 
+import javax.annotation.Nullable;
 import org.apache.maven.sigstore.model.rekord.Signature;
 import org.immutables.value.Value;
 
@@ -107,4 +108,8 @@ public abstract class SigstoreRequest
     public String tsaURL() {
         return "https://rekor.sigstore.dev/api/v1/timestamp";
     }
+
+    // SSH
+    @Nullable
+    public abstract SshRequest sshRequest();
 }
