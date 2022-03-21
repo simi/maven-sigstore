@@ -150,6 +150,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         return newResultFrom(result).emailAddress(emailFromIDToken).rawIdToken(idTokenString).build();
       } else {
         String subject = parsedIdToken.getPayload().getSubject();
+        System.out.println("using subject of " + subject);
         return newResultFrom(result).emailAddress(subject).rawIdToken(idTokenString).build();
       }
     } catch (Exception e) {
