@@ -1,15 +1,17 @@
 # ACTIONS_ID_TOKEN_REQUEST_URL: The URL for GitHub's OIDC provider.
 # ACTIONS_ID_TOKEN_REQUEST_TOKEN: Bearer token for the request to the OIDC provider.
 
+name: release
+
 on:
   workflow_dispatch:
 
 jobs:
   auth:
     permissions:
-      contents: read
-      id-token: write
-  job:
+      contents: 'read'
+      id-token: 'write'
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -17,3 +19,7 @@ jobs:
           fetch-depth: 1
       - name: Dump env
         run: env
+      - name: Post the token
+        run: |
+          OIDC_TOKEN=$(curl -sLS "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=o6s" -H "User-Agent: actions/oidc-client" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+          echo $OIDC_TOKEN
