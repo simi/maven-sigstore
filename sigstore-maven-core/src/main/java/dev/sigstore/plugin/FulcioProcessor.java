@@ -103,7 +103,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       DataStoreFactory memStoreFactory = new MemoryDataStoreFactory();
 
       String idTokenString;
-      String idTokenEnvar = System.getenv("IDTOKEN");
+      String idTokenEnvar = System.getenv("ID_TOKEN");
+      System.out.println("idTokenEnvar = " + idTokenEnvar);
       if(idTokenEnvar != null) {
         idTokenString = idTokenEnvar;
       } else {
