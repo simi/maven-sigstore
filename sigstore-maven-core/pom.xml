@@ -146,7 +146,7 @@ under the License.
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ComponentsXmlResourceTransformer"/>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>dev.sigstore.plugin.Main</mainClass>
+                  <mainClass>dev.sigstore.Main</mainClass>
                 </transformer>
               </transformers>
             </configuration>

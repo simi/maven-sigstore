@@ -1,7 +1,7 @@
-package org.apache.maven.sigstore.ssh;
+package dev.sigstore.ssh;
 
-import static dev.sigstore.plugin.Sign.base64;
-import static dev.sigstore.plugin.Sign.sha512;
+import static dev.sigstore.SigstoreSigner.base64;
+import static dev.sigstore.SigstoreSigner.sha512;
 import static java.lang.String.format;
 import static java.nio.file.Files.newBufferedReader;
 import static java.nio.file.Files.readString;
@@ -65,6 +65,13 @@ public class OpenSshSignature {
   //          343   e 247 353   P 213   L   K   P 334   |   x 273 026 316   e   n 241 226   u
   //            | 034   g 020 314   } 233   ^ 016   g   %   k 216   u 255 352 322   y 232 317
   //          356  \b
+
+  public static void main(String[] args) throws Exception {
+    new OpenSshSignature(
+        get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519"),
+        get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519.pub"))
+        .sign(get("/Users/jvanzyl/js/security/jssh/roundtrip0/file.txt"));
+  }
 
   public void sign(Path input) throws Exception {
     sign(Files.readAllBytes(input));
@@ -146,11 +153,13 @@ public class OpenSshSignature {
     ByteArrayOutputStream s = new ByteArrayOutputStream();
     // magic
     s.write("SSHSIG".getBytes());
-    byte[] a = new byte[4]; a[3] = '\004'; // EOT
+    byte[] a = new byte[4];
+    a[3] = '\004'; // EOT
     s.write(a);
     // namespace
     s.write("file".getBytes());
-    byte[] b = new byte[8]; b[7] = '\006'; // ACK
+    byte[] b = new byte[8];
+    b[7] = '\006'; // ACK
     s.write(b);
     // reserved
     //s.write(new byte[4]);
@@ -200,9 +209,9 @@ public class OpenSshSignature {
     String mime = base64(signatureBlob.toByteArray());
     // spec says 76 but it appears to be 70?
     int blockSize = 70;
-    for(int i = 0; i < mime.length(); i+=blockSize) {
+    for (int i = 0; i < mime.length(); i += blockSize) {
       String segment;
-      if((i + blockSize) > mime.length()) {
+      if ((i + blockSize) > mime.length()) {
         segment = mime.substring(i);
         sb.append(segment);
       } else {
@@ -213,12 +222,5 @@ public class OpenSshSignature {
 
     writeString(get("/Users/jvanzyl/js/security/jssh/roundtrip0/file.txt.sig2"),
         format("%s%n%s%n%s%n", header, sb, footer));
-  }
-
-  public static void main(String[] args) throws Exception {
-    new OpenSshSignature(
-        get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519"),
-        get("/Users/jvanzyl/js/security/jssh/roundtrip0/id_ed25519.pub"))
-        .sign(get("/Users/jvanzyl/js/security/jssh/roundtrip0/file.txt"));
   }
 }

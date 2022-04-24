@@ -1,4 +1,4 @@
-package dev.sigstore.plugin;
+package dev.sigstore;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -15,19 +15,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 // Replace with Airlift
-public class CliCommand
-{
+public class CliCommand {
 
   private final boolean saveOutput;
   private final Path workDir;
   private final List<String> args;
   private final Map<String, String> envars;
 
-  public CliCommand( String args, Path workDir, Map<String, String> envars, boolean saveOutput) {
+  public CliCommand(String args, Path workDir, Map<String, String> envars, boolean saveOutput) {
     this(Arrays.asList(args.split(" ")), workDir, envars, saveOutput);
   }
 
-  public CliCommand( List<String> args, Path workDir, Map<String, String> envars, boolean saveOutput) {
+  public CliCommand(List<String> args, Path workDir, Map<String, String> envars, boolean saveOutput) {
     this.workDir = workDir;
     this.args = args;
     this.envars = envars;

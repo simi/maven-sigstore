@@ -1,9 +1,9 @@
-package dev.sigstore.plugin;
+package dev.sigstore.x509;
 
-import static dev.sigstore.plugin.Sign.HTTP_201;
-import static dev.sigstore.plugin.Sign.base64;
-import static dev.sigstore.plugin.Sign.getHttpTransport;
-import static dev.sigstore.plugin.Sign.newResultFrom;
+import static dev.sigstore.SigstoreSigner.HTTP_201;
+import static dev.sigstore.SigstoreSigner.base64;
+import static dev.sigstore.SigstoreSigner.getHttpTransport;
+import static dev.sigstore.SigstoreSigner.newResultFrom;
 import static java.lang.String.format;
 
 import com.google.api.client.auth.oauth2.AuthorizationCodeFlow;
@@ -23,6 +23,10 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.PemReader;
 import com.google.api.client.util.store.DataStoreFactory;
 import com.google.api.client.util.store.MemoryDataStoreFactory;
+import dev.sigstore.ImmutableSigstoreResult;
+import dev.sigstore.SigstoreProcessorSupport;
+import dev.sigstore.SigstoreRequest;
+import dev.sigstore.SigstoreResult;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -47,7 +51,6 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.validator.routines.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +61,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
   @Override
   public SigstoreResult process(SigstoreRequest request) throws Exception {
     SigstoreResult result = ImmutableSigstoreResult.builder().build();
-    result = acquireKeyPair(request, result);
+    result = generateKeyPair(request, result);
     result = getIDToken(request, result);
     result = signSubject(request, result);
     result = retrieveFulcioSigningCertificate(request, result);
@@ -68,10 +71,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     return ImmutableSigstoreResult.builder().from(result).rekorRecord(rekord).build();
   }
 
-  /**
-   * Returns a new ephemeral keypair according to the plugin parameters
-   */
-  private SigstoreResult acquireKeyPair(SigstoreRequest request, SigstoreResult result) throws Exception {
+  private SigstoreResult generateKeyPair(SigstoreRequest request, SigstoreResult result) throws Exception {
     String signingAlgorithm = request.signingAlgorithm();
     String signingAlgorithmSpec = request.signingAlgorithmSpec();
     logger.info(format("generating keypair using %s with %s parameters", signingAlgorithm, signingAlgorithmSpec));
@@ -90,11 +90,6 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     }
   }
 
-  /**
-   * Obtains an OpenID Connect Identity Token from the OIDC provider specified in <code>oidcAuthURL</code>
-   *
-   * @return the ID token String (in JWS format)
-   */
   private SigstoreResult getIDToken(SigstoreRequest request, SigstoreResult result) throws Exception {
     String expectedEmailAddress = request.emailAddress();
     try {
@@ -158,17 +153,10 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     }
   }
 
-  /**
-   * Signs the provided email address using the provided private key
-   *
-   * @return base64 encoded String containing the signature for the provided email address
-   * @throws Exception If any exception happened during the signing process
-   */
   private SigstoreResult signSubject(SigstoreRequest request, SigstoreResult result) throws Exception {
     PrivateKey privateKey = result.keyPair().getPrivate();
     String subject = result.emailAddress();
-
-    System.out.println("request.emailAddress() = " + request.emailAddress());
+    logger.debug("request.emailAddress() = " + request.emailAddress());
 
     //EmailValidator ev = EmailValidator.getInstance();
     //if (!ev.isValid(emailAddress)) {
@@ -194,13 +182,6 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     }
   }
 
-  /**
-   * Obtains a X509 code signing certificate signed by the Fulcio instance specified in
-   * <code>fulcioInstanceURL</code>.
-   *
-   * @return The certificate chain including the code signing certificate
-   * @throws Exception If any exception happened during the request for the code signing certificate
-   */
   private SigstoreResult retrieveFulcioSigningCertificate(SigstoreRequest request, SigstoreResult result)
       throws Exception {
     PublicKey pubKey = result.keyPair().getPublic();
@@ -258,11 +239,6 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     }
   }
 
-  /**
-   * Writes the code signing certificate to a file
-   *
-   * @throws Exception If any exception happened during writing the certificate to the specified file
-   */
   private SigstoreResult saveFulcioSigningCertificateToDisk(SigstoreRequest request, SigstoreResult result)
       throws Exception {
     CertPath certs = result.signingCert();
@@ -285,16 +261,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     }
   }
 
-  /**
-   * Signs a JAR file using the private key; the provided certificate chain will be included in the signed JAR file
-   *
-   * @return The signed JAR file in byte array
-   * @throws Exception If any exception happened during the JAR signing process
-   */
   private SigstoreResult generateArtifactSignature(SigstoreRequest request, SigstoreResult result) throws Exception {
     try {
-      File jarToSign = request.artifact().toFile();
-      logger.info("Creating signature for artifact " + jarToSign.getAbsolutePath());
       Signature signature = Signature.getInstance("SHA256withECDSA");
       signature.initSign(result.keyPair().getPrivate());
       signature.update(Files.readAllBytes(request.artifact()));

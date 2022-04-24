@@ -1,4 +1,4 @@
-package dev.sigstore.plugin;
+package dev.sigstore;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -20,14 +20,48 @@ package dev.sigstore.plugin;
  */
 
 import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.cert.CertPath;
+import java.util.Map;
+import javax.annotation.Nullable;
 import org.immutables.value.Value;
 
+/**
+ * SigstoreSigner
+ */
 @Value.Immutable
-public abstract class SshRequest
-{
-    public abstract Path privateKey();
+public abstract class SigstoreResult {
 
-    public abstract Path publicKey();
+  @Nullable
+  public abstract String emailAddress();
 
+  @Nullable
+  public abstract String signedEmailAddress();
 
+  @Nullable
+  public abstract String rawIdToken();
+
+  @Nullable
+  public abstract KeyPair keyPair();
+
+  @Nullable
+  public abstract String artifactSignatureContent(); // b64
+
+  @Nullable
+  public abstract String artifactSigningCertContent();
+
+  @Nullable
+  public abstract CertPath signingCert();
+
+  @Nullable
+  public abstract String publicKeyContent();
+
+  @Nullable
+  public abstract Path publicKeyPath();
+
+  @Nullable
+  public abstract Map<String, Object> rekorRecord();
+
+  @Nullable
+  public abstract String rekorEntryUrl();
 }

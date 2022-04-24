@@ -1,18 +1,19 @@
-package dev.sigstore.plugin;
+package dev.sigstore.ssh;
 
-import static dev.sigstore.plugin.Sign.base64;
-import static dev.sigstore.plugin.Sign.sha256;
+import static dev.sigstore.ImmutableSigstoreResult.Builder;
+import static dev.sigstore.ImmutableSigstoreResult.builder;
+import static dev.sigstore.SigstoreSigner.base64;
+import static dev.sigstore.SigstoreSigner.sha256;
 import static java.nio.file.Files.writeString;
 
-import dev.sigstore.plugin.ImmutableSigstoreResult.Builder;
-import java.io.FileReader;
+import dev.sigstore.SigstoreProcessorSupport;
+import dev.sigstore.SigstoreRequest;
+import dev.sigstore.SigstoreResult;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
-import org.apache.maven.sigstore.ssh.OpenSshSignature;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.bouncycastle.crypto.util.OpenSSHPrivateKeyUtil;
 import org.bouncycastle.util.io.pem.PemReader;
@@ -34,11 +35,8 @@ public class SshProcessor extends SigstoreProcessorSupport {
 
     Path privateKey = request.sshRequest().privateKey();
     Path publicKey = request.sshRequest().publicKey();
-
-    Builder resultBuilder = ImmutableSigstoreResult.builder();
-
+    Builder resultBuilder = builder();
     Path artifact = request.artifact();
-
     Path sha256Path = artifact.resolveSibling(artifact.getFileName() + ".sha256");
     String sha256 = sha256(artifact);
     writeString(sha256Path, sha256);
@@ -72,6 +70,6 @@ public class SshProcessor extends SigstoreProcessorSupport {
     resultBuilder.artifactSignatureContent(base64(signatureContent.getBytes(StandardCharsets.UTF_8)));
     SigstoreResult result = resultBuilder.build();
     Map<String, Object> rekord = rekord(request, result);
-    return ImmutableSigstoreResult.builder().from(result).rekorRecord(rekord).build();
+    return builder().from(result).rekorRecord(rekord).build();
   }
 }

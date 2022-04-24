@@ -1,4 +1,4 @@
-package dev.sigstore.plugin;
+package dev.sigstore;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,13 +19,11 @@ package dev.sigstore.plugin;
  * under the License.
  */
 
-import static dev.sigstore.plugin.ImmutableSigstoreResult.Builder;
-import static dev.sigstore.plugin.ImmutableSigstoreResult.builder;
+import static dev.sigstore.ImmutableSigstoreResult.builder;
+import static dev.sigstore.SigstoreRequest.Type.PGP;
+import static dev.sigstore.SigstoreRequest.Type.SSH;
+import static dev.sigstore.SigstoreRequest.Type.X_509;
 import static java.lang.String.format;
-import static java.nio.file.Paths.get;
-import static org.apache.maven.sigstore.model.rekord.Signature.Format.PGP;
-import static org.apache.maven.sigstore.model.rekord.Signature.Format.SSH;
-import static org.apache.maven.sigstore.model.rekord.Signature.Format.X_509;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.http.ByteArrayContent;
@@ -35,6 +33,10 @@ import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.apache.v2.ApacheHttpTransport;
+import dev.sigstore.ImmutableSigstoreResult.Builder;
+import dev.sigstore.pgp.PgpProcessor;
+import dev.sigstore.ssh.SshProcessor;
+import dev.sigstore.x509.FulcioProcessor;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URL;
@@ -48,81 +50,29 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Sign
- */
-public class Sign {
+public class SigstoreSigner {
 
   public static final int HTTP_201 = 201;
-  private static final Logger LOGGER = LoggerFactory.getLogger(Sign.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SigstoreSigner.class);
 
   private SigstoreRequest request;
   private SigstoreResult result;
 
-  public Sign(SigstoreRequest request) {
+  public SigstoreSigner(SigstoreRequest request) {
     this.request = request;
   }
 
-  public SigstoreResult executeSigstoreFlow() throws Exception {
-    SigstoreProcessor processor = new FulcioProcessor();
-    if (request.type().equals(X_509)) {
-      processor = new FulcioProcessor();
-    } else if (request.type().equals(PGP)) {
-      processor = new PgpProcessor();
-    } else if (request.type().equals(SSH)) {
-      processor = new SshProcessor();
-    }
-    SigstoreResult result = processor.process(request);
-    result = submitRecordToRekor(request, result);
-    LOGGER.info(format("Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl()));
-    return result;
-  }
-
-  /**
-   * Submits the signature to a Rekor transparency log
-   *
-   * @return The URL where the entry in the transparency log can be seen for this signature/key combination
-   * @throws Exception If any exception happened during interaction with the Rekor instance
-   */
-  public SigstoreResult submitRecordToRekor(SigstoreRequest request, SigstoreResult result) throws Exception {
-    // Stream the contents and don't place the artifact in memory
-
-    try {
-      HttpTransport httpTransport = getHttpTransport(request);
-      ObjectMapper m = new ObjectMapper();
-      String json = m.writerWithDefaultPrettyPrinter().writeValueAsString(result.rekorRecord());
-      System.out.println(json);
-      byte[] rekorContent = json.getBytes(StandardCharsets.UTF_8);
-      HttpContent rekorJsonContent = new ByteArrayContent(null, rekorContent);
-      ByteArrayOutputStream rekorStream = new ByteArrayOutputStream();
-      rekorJsonContent.writeTo(rekorStream);
-      GenericUrl rekorPostUrl = new GenericUrl(request.rekorInstanceURL() + "/api/v1/log/entries");
-      HttpRequest rekorReq =
-          httpTransport.createRequestFactory().buildPostRequest(rekorPostUrl, rekorJsonContent);
-      rekorReq.getHeaders().set("Accept", "application/json");
-      rekorReq.getHeaders().set("Content-Type", "application/json");
-      HttpResponse rekorResp = rekorReq.execute();
-      if (rekorResp.getStatusCode() != HTTP_201) {
-        throw new IOException("bad response from rekor: " + rekorResp.parseAsString());
-      }
-      URL rekorEntryUrl = new URL(new URL(request.rekorInstanceURL()), rekorResp.getHeaders().getLocation());
-      return builder().from(result).rekorEntryUrl(rekorEntryUrl.toExternalForm()).build();
-    } catch (Exception e) {
-      throw new Exception(format("Error in submitting entry to Rekor @ %s:", request.rekorInstanceURL()), e);
-    }
-  }
-
-  // -----------------------------------------------------------------------------------------------------------------
-  //
-  // -----------------------------------------------------------------------------------------------------------------
-
   public static Builder newResultFrom(SigstoreResult result) {
-    return ImmutableSigstoreResult.builder().from(result);
+    return builder().from(result);
   }
 
   public static String base64(Path path) throws IOException {
     return Base64.getEncoder().encodeToString(Files.readAllBytes(path));
   }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  //
+  // -----------------------------------------------------------------------------------------------------------------
 
   public static String base64(byte[] input) {
     return Base64.getEncoder().encodeToString(input);
@@ -137,7 +87,6 @@ public class Sign {
     Base64.Encoder encoder = Base64.getMimeEncoder(length, lineSeparator.getBytes());
     return new String(encoder.encode(input));
   }
-
 
   public static String sha256(Path path) throws Exception {
     MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -172,7 +121,6 @@ public class Sign {
     return hexString.toString();
   }
 
-
   /**
    * Generates an HTTP Transport according to the requested SSL verification settings
    *
@@ -187,4 +135,44 @@ public class Sign {
     return new ApacheHttpTransport(hcb.build());
   }
 
+  public SigstoreResult executeSigstoreFlow() throws Exception {
+    SigstoreProcessor processor = new FulcioProcessor();
+    if (request.type().equals(X_509)) {
+      processor = new FulcioProcessor();
+    } else if (request.type().equals(PGP)) {
+      processor = new PgpProcessor();
+    } else if (request.type().equals(SSH)) {
+      processor = new SshProcessor();
+    }
+    SigstoreResult result = processor.process(request);
+    result = submitRecordToRekor(request, result);
+    LOGGER.info(format("Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl()));
+    return result;
+  }
+
+  public SigstoreResult submitRecordToRekor(SigstoreRequest request, SigstoreResult result) throws Exception {
+    //TODO: Stream the contents and don't place the artifact in memory
+    try {
+      HttpTransport httpTransport = getHttpTransport(request);
+      ObjectMapper m = new ObjectMapper();
+      String json = m.writerWithDefaultPrettyPrinter().writeValueAsString(result.rekorRecord());
+      System.out.println(json);
+      byte[] rekorContent = json.getBytes(StandardCharsets.UTF_8);
+      HttpContent rekorJsonContent = new ByteArrayContent(null, rekorContent);
+      ByteArrayOutputStream rekorStream = new ByteArrayOutputStream();
+      rekorJsonContent.writeTo(rekorStream);
+      GenericUrl rekorPostUrl = new GenericUrl(request.rekorInstanceURL() + "/api/v1/log/entries");
+      HttpRequest rekorReq = httpTransport.createRequestFactory().buildPostRequest(rekorPostUrl, rekorJsonContent);
+      rekorReq.getHeaders().set("Accept", "application/json");
+      rekorReq.getHeaders().set("Content-Type", "application/json");
+      HttpResponse rekorResp = rekorReq.execute();
+      if (rekorResp.getStatusCode() != HTTP_201) {
+        throw new IOException("bad response from rekor: " + rekorResp.parseAsString());
+      }
+      URL rekorEntryUrl = new URL(new URL(request.rekorInstanceURL()), rekorResp.getHeaders().getLocation());
+      return builder().from(result).rekorEntryUrl(rekorEntryUrl.toExternalForm()).build();
+    } catch (Exception e) {
+      throw new Exception(format("Error in submitting entry to Rekor @ %s:", request.rekorInstanceURL()), e);
+    }
+  }
 }

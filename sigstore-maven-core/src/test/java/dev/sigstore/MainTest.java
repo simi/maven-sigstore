@@ -3,8 +3,6 @@ package dev.sigstore;
 import static org.apache.maven.sigstore.model.rekord.Signature.Format.X_509;
 
 import dev.sigstore.plugin.ImmutableSigstoreRequest;
-import dev.sigstore.plugin.Sign;
-import dev.sigstore.plugin.SigstoreRequest;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,7 +20,7 @@ public class MainTest {
         .emailAddress("jason@vanzyl.ca")
         .artifact(artifact)
         .build();
-    Sign signer = new Sign(request);
+    SigstoreSigner signer = new SigstoreSigner(request);
     signer.executeSigstoreFlow();
   }
 }
