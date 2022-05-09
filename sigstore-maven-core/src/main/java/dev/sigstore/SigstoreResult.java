@@ -30,6 +30,12 @@ import org.immutables.value.Value;
 public abstract class SigstoreResult {
 
   @Nullable
+  public abstract Path artifactSignature();
+
+  @Nullable
+  public abstract Path signingCertificate();
+
+  @Nullable
   public abstract String emailAddress();
 
   @Nullable

@@ -27,13 +27,8 @@ under the License.
     <artifactId>sigstore-maven</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
-
   <artifactId>sigstore-maven-core</artifactId>
   <name>Sigstore Maven Core</name>
-
-  <prerequisites>
-    <maven>${mavenVersion}</maven>
-  </prerequisites>
 
   <dependencies>
     <dependency>

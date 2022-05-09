@@ -1,6 +1,7 @@
 package dev.sigstore.plugin;
 
 import static dev.sigstore.ImmutableSigstoreRequest.*;
+import static dev.sigstore.SigstoreRequest.Type.X_509;
 import static java.lang.String.format;
 import static java.nio.file.Files.copy;
 import static java.nio.file.Files.createDirectories;
@@ -26,11 +27,14 @@ import org.apache.maven.project.MavenProjectHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Mojo(name = "signArtifact", defaultPhase = LifecyclePhase.VERIFY, threadSafe = true)
-public class SignArtifactMojo extends AbstractMojo {
+@Mojo(name = "sign", defaultPhase = LifecyclePhase.VERIFY, threadSafe = true)
+public class SignMojo extends AbstractMojo {
 
-  public static final String SIGNATURE_EXTENSION = ".asc";
-  private static final Logger logger = LoggerFactory.getLogger(SignArtifactMojo.class);
+  public static final String PGP_SIGNATURE_EXTENSION = ".asc";
+  public static final String X509_SIGNATURE_EXTENSION = ".sig";
+  public static final String X509_CERTIFICATE_EXTENSION = ".pem";
+
+  private static final Logger logger = LoggerFactory.getLogger(SignMojo.class);
 
   @Inject
   protected MavenProjectHelper projectHelper;
@@ -38,13 +42,28 @@ public class SignArtifactMojo extends AbstractMojo {
   @Parameter(defaultValue = "${project}", readonly = true, required = true)
   private MavenProject project;
 
-  @Parameter(property = "gpg.skip", defaultValue = "false")
-  private boolean skip;
+  // ---------------------------------------------------------------------------
+  // Modes
+  // ---------------------------------------------------------------------------
+  //
+  // sigstore x509 signatures
+  // maven pgp signatures with sigstore x509 signatures
+  // maven pgp signatures with sigstore PGP signatures
+  //
 
-  @Parameter(property = "gpg.passphrase")
-  private String passphrase;
+  // ---------------------------------------------------------------------------
+  // PGP
+  // ---------------------------------------------------------------------------
 
+  @Parameter(property = "pgpEnable")
+  private boolean pgpEnable;
+
+  @Parameter(property = "pgpPassphrase")
+  private String pgpPassphrase;
+
+  // ---------------------------------------------------------------------------
   // Sigstore
+  // ---------------------------------------------------------------------------
 
   /** Signing algorithm to be used; default is ECDSA */
   @Parameter( defaultValue = "sigstore", property = "signer-name", required = true )
@@ -96,7 +115,7 @@ public class SignArtifactMojo extends AbstractMojo {
 
   @Override
   public void execute() throws MojoExecutionException {
-    List<SigningBundle> signingBundles = new ArrayList<>();
+    List<SignedBlob> signedBlobs = new ArrayList<>();
 
     if (!"pom".equals(project.getPackaging())) {
       //
@@ -108,10 +127,7 @@ public class SignArtifactMojo extends AbstractMojo {
         logger.info("There is no artifact present. Make sure you run this after the package phase.");
         return;
       }
-      File projectArtifactSignature = sign(file);
-      if (projectArtifactSignature != null) {
-        signingBundles.add(new SigningBundle(artifact.getArtifactHandler().getExtension(), projectArtifactSignature));
-      }
+      signedBlobs.add(new SignedBlob(file.toPath(),artifact.getArtifactHandler().getExtension()));
     }
 
     //
@@ -124,43 +140,37 @@ public class SignArtifactMojo extends AbstractMojo {
     } catch (IOException e) {
       throw new MojoExecutionException("Error copying POM for signing.", e);
     }
-    File pomSignature = sign(pomToSign);
-    if (pomSignature != null) {
-      signingBundles.add(new SigningBundle("pom", pomSignature));
-    }
+    signedBlobs.add(new SignedBlob(pomToSign.toPath(), "pom"));
 
     //
-    // Attached artifact signatures
+    // Attached artifacts
     //
     for (org.apache.maven.artifact.Artifact a : project.getAttachedArtifacts()) {
-      File signatureFile = sign(a.getFile());
-      if (signatureFile != null) {
-        signingBundles.add(new SigningBundle(a.getArtifactHandler().getExtension(), signatureFile, a.getClassifier()));
+      signedBlobs.add(new SignedBlob(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
+    }
+
+    for (SignedBlob blob : signedBlobs) {
+      File file = blob.blob().toFile();
+      try {
+        SigstoreRequest request = builder()
+            .artifact(file.toPath())
+            .type(X_509)
+            .emailAddress("jason@vanzyl.ca")
+            .build();
+        SigstoreResult result = new SigstoreSigner(request).sign();
+        projectHelper.attachArtifact(project, blob.extension() + X509_SIGNATURE_EXTENSION, blob.classifier(), result.artifactSignature().toFile());
+        projectHelper.attachArtifact(project, blob.extension() + X509_CERTIFICATE_EXTENSION, blob.classifier(), result.signingCertificate().toFile());
+      } catch (Exception e) {
+        throw new MojoExecutionException(e);
       }
-    }
 
-    for (SigningBundle bundle : signingBundles) {
-      projectHelper.attachArtifact(project, bundle.getExtension() + SIGNATURE_EXTENSION, bundle.getClassifier(), bundle.getSignature());
-    }
-  }
-
-  private File sign(File file) throws MojoExecutionException {
-    SigstoreRequest request = builder().build();
-    try {
-      SigstoreResult result = new SigstoreSigner(request).sign();
-    } catch(Exception e) {
-      throw new MojoExecutionException(e);
-    }
-
-    try {
-      PgpArtifactSigner signer = new PgpArtifactSigner();
-      if (passphrase != null) {
-        return signer.sign(file, passphrase);
-      } else {
-        return signer.sign(file);
+      try {
+        PgpArtifactSigner signer = new PgpArtifactSigner();
+        File pgpSignature = signer.sign(file, pgpPassphrase);
+        projectHelper.attachArtifact(project, blob.extension() + PGP_SIGNATURE_EXTENSION, blob.classifier(), pgpSignature);
+      } catch (Exception e) {
+        throw new MojoExecutionException("Error signing artifact " + file + ".", e);
       }
-    } catch (Exception e) {
-      throw new MojoExecutionException("Error signing artifact " + file + ".", e);
     }
   }
 }

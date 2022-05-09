@@ -20,39 +20,33 @@ package dev.sigstore.plugin;
  */
 
 import java.io.File;
+import java.nio.file.Path;
 
-public class SigningBundle
-{
-    private final String extension;
+public class SignedBlob {
 
-    private final String classifier;
+  private final Path blob;
+  private final String extension;
+  private final String classifier;
 
-    private final File signature;
+  public SignedBlob(Path blob, String extension) {
+    this(blob, extension, null);
+  }
 
-    public SigningBundle( String extension, File signature )
-    {
-        this( extension, signature, null );
-    }
+  public SignedBlob(Path blob, String extension, String classifier) {
+    this.blob = blob;
+    this.extension = extension;
+    this.classifier = classifier;
+  }
 
-    public SigningBundle( String extension, File signature, String classifier )
-    {
-        this.extension = extension;
-        this.classifier = classifier;
-        this.signature = signature;
-    }
+  public Path blob() {
+    return blob;
+  }
 
-    public String getExtension()
-    {
-        return extension;
-    }
+  public String extension() {
+    return extension;
+  }
 
-    public File getSignature()
-    {
-        return signature;
-    }
-
-    public String getClassifier()
-    {
-        return classifier;
-    }
+  public String classifier() {
+    return classifier;
+  }
 }

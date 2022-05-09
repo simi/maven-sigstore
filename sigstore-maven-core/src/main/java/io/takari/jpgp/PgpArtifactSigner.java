@@ -34,6 +34,9 @@ public class PgpArtifactSigner {
   }
 
   public File sign(File fileToSign, String passphrase) throws IOException, PGPException {
+    if (passphrase == null) {
+      passphrase = findPassphrase();
+    }
     File signatureFile = new File(fileToSign.getParentFile(), fileToSign.getName() + ".asc");
     try (InputStream inputStream = new FileInputStream(fileToSign); OutputStream outputStream = new FileOutputStream(signatureFile)) {
       signer.signMessage(secretKey, passphrase, inputStream, outputStream);

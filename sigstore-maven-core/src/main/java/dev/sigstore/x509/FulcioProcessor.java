@@ -288,7 +288,11 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       byte[] artifactSignatureBytes = signature.sign();
       String b64ArtifactSignatureContent = getEncoder().encodeToString(artifactSignatureBytes);
       writeString(request.artifactSignature(), b64ArtifactSignatureContent);
-      return newResultFrom(result).artifactSignatureContent(b64ArtifactSignatureContent).build();
+      return newResultFrom(result)
+          .artifactSignatureContent(b64ArtifactSignatureContent)
+          .artifactSignature(request.artifactSignature())
+          .signingCertificate(request.outputSigningCert())
+          .build();
     } catch (Exception e) {
       throw new Exception("Error signing JAR file:", e);
     }

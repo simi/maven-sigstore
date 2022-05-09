@@ -27,7 +27,7 @@ under the License.
     <artifactId>sigstore-maven</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
-
+  <groupId>dev.sigstore.maven.plugins</groupId>
   <artifactId>sigstore-maven-plugin</artifactId>
   <packaging>maven-plugin</packaging>
   <name>Sigstore Maven Plugin</name>
