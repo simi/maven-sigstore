@@ -20,6 +20,7 @@ package dev.sigstore.x509;
  */
 
 import static dev.sigstore.SigstoreRequest.Type.X_509;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.sigstore.SigstoreRequest;
 import dev.sigstore.SigstoreResult;
@@ -41,9 +42,7 @@ public class X509ProcessorTest extends SigstoreTestSupport {
     SigstoreSigner signer = new SigstoreSigner(request);
     SigstoreResult result = signer.sign();
 
-    // generate artifact (done)
-    // make sure all the bits are generated and correct
-    // make sure the rekor response is valid
-    // verify
+    assertThat(result.signingCertificate()).isNotNull();
+    assertThat(result.artifactSignature()).isNotNull();
   }
 }

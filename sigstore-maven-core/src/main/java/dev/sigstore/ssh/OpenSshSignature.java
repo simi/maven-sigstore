@@ -48,7 +48,6 @@ import org.bouncycastle.util.io.pem.PemReader;
 // https://stackoverflow.com/questions/66476780/sign-verify-json-using-ed25519-keys-with-bouncy-castle-java
 // https://www.agwa.name/blog/post/ssh_signatures
 // https://blog.sigstore.dev/ssh-is-the-new-gpg-74b3c6cc51c0
-
 // https://datatracker.ietf.org/doc/html/rfc4253
 
 public class OpenSshSignature {

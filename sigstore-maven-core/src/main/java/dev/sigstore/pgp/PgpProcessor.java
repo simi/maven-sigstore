@@ -28,8 +28,6 @@ import dev.sigstore.ImmutableSigstoreResult.Builder;
 import dev.sigstore.SigstoreProcessorSupport;
 import dev.sigstore.SigstoreRequest;
 import dev.sigstore.SigstoreResult;
-import io.takari.jpgp.PgpArtifactSigner;
-import io.takari.jpgp.PgpKeyRingLoader;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;

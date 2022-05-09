@@ -1,15 +1,14 @@
 package dev.sigstore.plugin;
 
-import static dev.sigstore.ImmutableSigstoreRequest.*;
+import static dev.sigstore.ImmutableSigstoreRequest.builder;
 import static dev.sigstore.SigstoreRequest.Type.X_509;
-import static java.lang.String.format;
 import static java.nio.file.Files.copy;
 import static java.nio.file.Files.createDirectories;
 
-import dev.sigstore.SigstoreSigner;
 import dev.sigstore.SigstoreRequest;
 import dev.sigstore.SigstoreResult;
-import io.takari.jpgp.PgpArtifactSigner;
+import dev.sigstore.SigstoreSigner;
+import dev.sigstore.pgp.PgpArtifactSigner;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -56,7 +55,7 @@ public class SignMojo extends AbstractMojo {
   // ---------------------------------------------------------------------------
 
   @Parameter(property = "pgpEnable")
-  private boolean pgpEnable;
+  private boolean pgpEnabled;
 
   @Parameter(property = "pgpPassphrase")
   private String pgpPassphrase;
@@ -65,52 +64,76 @@ public class SignMojo extends AbstractMojo {
   // Sigstore
   // ---------------------------------------------------------------------------
 
-  /** Signing algorithm to be used; default is ECDSA */
-  @Parameter( defaultValue = "sigstore", property = "signer-name", required = true )
+  /**
+   * Signing algorithm to be used; default is ECDSA
+   */
+  @Parameter(defaultValue = "sigstore", property = "signer-name", required = true)
   private String signerName;
 
-  /** Signing algorithm to be used; default is ECDSA */
-  @Parameter( defaultValue = "EC", property = "signing-algorithm", required = true )
+  /**
+   * Signing algorithm to be used; default is ECDSA
+   */
+  @Parameter(defaultValue = "EC", property = "signing-algorithm", required = true)
   private String signingAlgorithm;
 
-  /** Signing algorithm specification to be used; default is secp256r1 */
-  @Parameter( defaultValue = "secp256r1", property = "signing-algorithm-spec", required = true )
+  /**
+   * Signing algorithm specification to be used; default is secp256r1
+   */
+  @Parameter(defaultValue = "secp256r1", property = "signing-algorithm-spec", required = true)
   private String signingAlgorithmSpec;
 
-  /** URL of Fulcio instance */
-  @Parameter( defaultValue = "https://fulcio.sigstore.dev", property = "fulcio-instance-url", required = true )
+  /**
+   * URL of Fulcio instance
+   */
+  @Parameter(defaultValue = "https://fulcio.sigstore.dev", property = "fulcio-instance-url", required = true)
   private URL fulcioInstanceURL;
 
-  /** Use browser-less OAuth Device Code flow instead of opening local browser */
-  @Parameter( defaultValue = "false", property = "oidc-device-code", required = true )
+  /**
+   * Use browser-less OAuth Device Code flow instead of opening local browser
+   */
+  @Parameter(defaultValue = "false", property = "oidc-device-code", required = true)
   private boolean oidcDeviceCodeFlow;
 
-  /** Client ID for OIDC Identity Provider */
-  @Parameter( defaultValue = "sigstore", property = "oidc-client-id", required = true )
+  /**
+   * Client ID for OIDC Identity Provider
+   */
+  @Parameter(defaultValue = "sigstore", property = "oidc-client-id", required = true)
   private String oidcClientID;
 
-  /** URL of OIDC Identity Provider Authorization endpoint */
-  @Parameter( defaultValue = "https://oauth2.sigstore.dev/auth/auth", property = "oidc-auth-url", required = true )
+  /**
+   * URL of OIDC Identity Provider Authorization endpoint
+   */
+  @Parameter(defaultValue = "https://oauth2.sigstore.dev/auth/auth", property = "oidc-auth-url", required = true)
   private URL oidcAuthURL;
 
-  /** URL of OIDC Identity Provider Token endpoint */
-  @Parameter( defaultValue = "https://oauth2.sigstore.dev/auth/token", property = "oidc-token-url", required = true )
+  /**
+   * URL of OIDC Identity Provider Token endpoint
+   */
+  @Parameter(defaultValue = "https://oauth2.sigstore.dev/auth/token", property = "oidc-token-url", required = true)
   private URL oidcTokenURL;
 
-  /** URL of OIDC Identity Provider Device Code endpoint */
-  @Parameter( defaultValue = "https://oauth2.sigstore.dev/auth/device/code", property = "oidc-device-code-url", required = true )
+  /**
+   * URL of OIDC Identity Provider Device Code endpoint
+   */
+  @Parameter(defaultValue = "https://oauth2.sigstore.dev/auth/device/code", property = "oidc-device-code-url", required = true)
   private URL oidcDeviceCodeURL;
 
-  /** URL of Rekor instance */
-  @Parameter( defaultValue = "https://rekor.sigstore.dev", property = "rekor-instance-url", required = true )
+  /**
+   * URL of Rekor instance
+   */
+  @Parameter(defaultValue = "https://rekor.sigstore.dev", property = "rekor-instance-url", required = true)
   private URL rekorInstanceURL;
 
-  /** Email address of signer; if not specified, the email address returned in the OIDC identity token will be used */
-  @Parameter( property = "email-address" )
+  /**
+   * Email address of signer; if not specified, the email address returned in the OIDC identity token will be used
+   */
+  @Parameter(property = "email-address")
   private String emailAddress;
 
-  /** URL of Trusted Timestamp Authority (RFC3161 compliant) */
-  @Parameter( defaultValue = "https://rekor.sigstore.dev/api/v1/timestamp", property = "tsa-url", required = true )
+  /**
+   * URL of Trusted Timestamp Authority (RFC3161 compliant)
+   */
+  @Parameter(defaultValue = "https://rekor.sigstore.dev/api/v1/timestamp", property = "tsa-url", required = true)
   private URL tsaURL;
 
   @Override
@@ -127,7 +150,7 @@ public class SignMojo extends AbstractMojo {
         logger.info("There is no artifact present. Make sure you run this after the package phase.");
         return;
       }
-      signedBlobs.add(new SignedBlob(file.toPath(),artifact.getArtifactHandler().getExtension()));
+      signedBlobs.add(new SignedBlob(file.toPath(), artifact.getArtifactHandler().getExtension()));
     }
 
     //
@@ -164,12 +187,14 @@ public class SignMojo extends AbstractMojo {
         throw new MojoExecutionException(e);
       }
 
-      try {
-        PgpArtifactSigner signer = new PgpArtifactSigner();
-        File pgpSignature = signer.sign(file, pgpPassphrase);
-        projectHelper.attachArtifact(project, blob.extension() + PGP_SIGNATURE_EXTENSION, blob.classifier(), pgpSignature);
-      } catch (Exception e) {
-        throw new MojoExecutionException("Error signing artifact " + file + ".", e);
+      if (pgpEnabled) {
+        try {
+          PgpArtifactSigner signer = new PgpArtifactSigner();
+          File pgpSignature = signer.sign(file, pgpPassphrase);
+          projectHelper.attachArtifact(project, blob.extension() + PGP_SIGNATURE_EXTENSION, blob.classifier(), pgpSignature);
+        } catch (Exception e) {
+          throw new MojoExecutionException("Error signing artifact " + file + ".", e);
+        }
       }
     }
   }
