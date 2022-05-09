@@ -121,12 +121,6 @@ public class SigstoreSigner {
     return hexString.toString();
   }
 
-  /**
-   * Generates an HTTP Transport according to the requested SSL verification settings
-   *
-   * @return transport object with SSL verification enabled/disabled per the plugin parameter
-   * <code>sslVerification</code>
-   */
   public static HttpTransport getHttpTransport(SigstoreRequest request) {
     HttpClientBuilder hcb = ApacheHttpTransport.newDefaultHttpClientBuilder();
     if (!request.sslVerfication()) {
@@ -135,7 +129,7 @@ public class SigstoreSigner {
     return new ApacheHttpTransport(hcb.build());
   }
 
-  public SigstoreResult executeSigstoreFlow() throws Exception {
+  public SigstoreResult sign() throws Exception {
     SigstoreProcessor processor = new FulcioProcessor();
     if (request.type().equals(X_509)) {
       processor = new FulcioProcessor();
@@ -156,7 +150,6 @@ public class SigstoreSigner {
       HttpTransport httpTransport = getHttpTransport(request);
       ObjectMapper m = new ObjectMapper();
       String json = m.writerWithDefaultPrettyPrinter().writeValueAsString(result.rekorRecord());
-      System.out.println(json);
       byte[] rekorContent = json.getBytes(StandardCharsets.UTF_8);
       HttpContent rekorJsonContent = new ByteArrayContent(null, rekorContent);
       ByteArrayOutputStream rekorStream = new ByteArrayOutputStream();

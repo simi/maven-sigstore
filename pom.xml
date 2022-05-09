@@ -42,30 +42,10 @@ under the License.
     <module>sigstore-maven-plugin</module>
   </modules>
 
-  <!-- Preparation for donation to Apache
-  <scm>
-    <connection>scm:git:https://gitbox.apache.org/repos/asf/maven-sigstore.git</connection>
-    <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/maven-sigstore.git</developerConnection>
-    <url>https://github.com/apache/maven-sigstore/tree/${project.scm.tag}</url>
-    <tag>HEAD</tag>
-  </scm>
-  <issueManagement>
-    <system>jira</system>
-    <url>https://issues.apache.org/jira/browse/SIGSTORE</url>
-  </issueManagement>
-  <ciManagement>
-    <system>Jenkins</system>
-    <url>https://ci-builds.apache.org/job/Maven/job/maven-box/job/maven-release/</url>
-  </ciManagement>
-  <distributionManagement>
-    <site>
-      <id>apache.website</id>
-      <url>scm:svn:https://svn.apache.org/repos/asf/maven/website/components/${maven.site.path}</url>
-    </site>
-  </distributionManagement>
-  -->
-
   <contributors>
+    <contributor>
+      <name>Bob Callaway</name>
+    </contributor>
     <contributor>
       <name>Jason van Zyl</name>
     </contributor>
@@ -74,8 +54,12 @@ under the License.
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.target>11</maven.compiler.target>
-    <maven.compiler.source>11</maven.compiler.source>    <mavenVersion>3.8.4</mavenVersion>
-    <maven.site.path>maven-sigstore-archives/maven-sigstore-LATEST</maven.site.path>
+    <maven.compiler.source>11</maven.compiler.source>
+    <mavenVersion>3.8.4</mavenVersion>
+    <slf4j.version>1.7.36</slf4j.version>
+    <jackson.version>2.13.1</jackson.version>
+    <junixsocket.version>2.0.4</junixsocket.version>
+    <bouncycastle.version>1.69</bouncycastle.version>
   </properties>
 
   <build>
@@ -114,6 +98,13 @@ under the License.
           <version>3.1.2</version>
         </plugin>
         -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <configuration>
+            <skip>true</skip>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -146,8 +137,50 @@ under the License.
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.36</version>
+        <version>${slf4j.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>log4j-over-slf4j</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-simple</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpg-jdk15on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk15on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.kohlschutter.junixsocket</groupId>
+        <artifactId>junixsocket-common</artifactId>
+        <version>${junixsocket.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.kohlschutter.junixsocket</groupId>
+        <artifactId>junixsocket-native-common</artifactId>
+        <version>${junixsocket.version}</version>
+      </dependency>
+      <!-- Jackson -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <!-- Maven -->
       <dependency>
         <groupId>org.apache.maven</groupId>
         <artifactId>maven-plugin-api</artifactId>
@@ -245,13 +278,26 @@ under the License.
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
         <version>4.13.2</version>
-        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>3.22.0</version>
+      </dependency>
+      <dependency>
+        <groupId>io.takari</groupId>
+        <artifactId>takari-archiver</artifactId>
+        <version>0.1.27</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.plexus</groupId>
+        <artifactId>plexus-utils</artifactId>
+        <version>3.1.0</version>
       </dependency>
       <dependency>
         <groupId>org.apache.maven.plugin-testing</groupId>
         <artifactId>maven-plugin-testing-harness</artifactId>
         <version>3.3.0</version>
-        <scope>test</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>

@@ -1,5 +1,24 @@
 package dev.sigstore;
 
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import static dev.sigstore.SigstoreSigner.base64;
 import static dev.sigstore.SigstoreSigner.sha256;
 import static org.apache.maven.sigstore.model.hashedrekord.Hash.Algorithm.SHA_256;
@@ -18,7 +37,12 @@ import org.apache.maven.sigstore.model.rekord.Signature.Format;
 
 public abstract class SigstoreProcessorSupport implements SigstoreProcessor {
 
-  public static Map<String, Object> generateHashedRekord(SigstoreRequest request, SigstoreResult result) throws Exception {
+  //TODO: make this use the implementations not the other way around
+  protected Map<String, Object> rekord(SigstoreRequest request, SigstoreResult result) throws Exception {
+    return generateHashedRekord(request, result);
+  }
+
+  protected Map<String, Object> generateHashedRekord(SigstoreRequest request, SigstoreResult result) throws Exception {
     // {
     //   "apiVersion" : "0.0.1",
     //   "kind" : "hashedrekord",
@@ -54,7 +78,7 @@ public abstract class SigstoreProcessorSupport implements SigstoreProcessor {
     return rekord;
   }
 
-  public static Map<String, Object> generateRekord(SigstoreRequest request, SigstoreResult result) throws Exception {
+  protected Map<String, Object> generateRekord(SigstoreRequest request, SigstoreResult result) throws Exception {
     // {
     //   "apiVersion" : "0.0.1",
     //   "kind" : "rekord",
@@ -93,7 +117,7 @@ public abstract class SigstoreProcessorSupport implements SigstoreProcessor {
     return rekord;
   }
 
-  private static Format from(SigstoreRequest.Type type) {
+  private Format from(SigstoreRequest.Type type) {
     if (type.equals(Type.X_509)) {
       return Format.X_509;
     }
@@ -104,9 +128,5 @@ public abstract class SigstoreProcessorSupport implements SigstoreProcessor {
       return Format.PGP;
     }
     throw new IllegalArgumentException("Unsupported type " + type);
-  }
-
-  protected Map<String, Object> rekord(SigstoreRequest request, SigstoreResult result) throws Exception {
-    return generateHashedRekord(request, result);
   }
 }

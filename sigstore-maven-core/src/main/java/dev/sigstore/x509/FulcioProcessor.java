@@ -1,10 +1,33 @@
 package dev.sigstore.x509;
 
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import static dev.sigstore.SigstoreSigner.HTTP_201;
 import static dev.sigstore.SigstoreSigner.base64;
 import static dev.sigstore.SigstoreSigner.getHttpTransport;
 import static dev.sigstore.SigstoreSigner.newResultFrom;
 import static java.lang.String.format;
+import static java.nio.file.Files.writeString;
+import static java.util.Base64.Encoder;
+import static java.util.Base64.getEncoder;
+import static java.util.Base64.getMimeEncoder;
 
 import com.google.api.client.auth.oauth2.AuthorizationCodeFlow;
 import com.google.api.client.auth.oauth2.BearerToken;
@@ -47,7 +70,6 @@ import java.security.cert.X509Certificate;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,14 +99,13 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     logger.info(format("generating keypair using %s with %s parameters", signingAlgorithm, signingAlgorithmSpec));
     try {
       KeyPairGenerator kpg = KeyPairGenerator.getInstance(signingAlgorithm);
-      AlgorithmParameterSpec aps;
       if ("EC".equals(signingAlgorithm)) {
-        aps = new ECGenParameterSpec(signingAlgorithmSpec);
+        AlgorithmParameterSpec aps = new ECGenParameterSpec(signingAlgorithmSpec);
+        kpg.initialize(aps, new SecureRandom());
+        return newResultFrom(result).keyPair(kpg.generateKeyPair()).build();
       } else {
         throw new IllegalArgumentException(format("unable to create signing algorithm spec for signing algorithm %s", signingAlgorithm));
       }
-      kpg.initialize(aps, new SecureRandom());
-      return newResultFrom(result).keyPair(kpg.generateKeyPair()).build();
     } catch (Exception e) {
       throw new Exception("Error creating keypair:", e);
     }
@@ -96,10 +117,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       JsonFactory jsonFactory = new GsonFactory();
       HttpTransport httpTransport = getHttpTransport(request);
       DataStoreFactory memStoreFactory = new MemoryDataStoreFactory();
-
       String idTokenString;
       String idTokenEnvar = System.getenv("ID_TOKEN");
-      System.out.println("idTokenEnvar = " + idTokenEnvar);
       if (idTokenEnvar != null) {
         idTokenString = idTokenEnvar;
       } else {
@@ -120,32 +139,30 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         }
         idTokenString = (String) memStoreFactory.getDataStore("user").get(idTokenKey);
       }
+
       IdTokenVerifier idTokenVerifier = new IdTokenVerifier();
       IdToken parsedIdToken = IdToken.parse(jsonFactory, idTokenString);
       if (!idTokenVerifier.verify(parsedIdToken)) {
         throw new InvalidObjectException("id token could not be verified");
       }
 
-      // So this verifies
       String emailFromIDToken = (String) parsedIdToken.getPayload().get("email");
       if (emailFromIDToken != null) {
-        System.out.println("emailFromIDToken = " + emailFromIDToken);
         Boolean emailVerified = (Boolean) parsedIdToken.getPayload().get("email_verified");
-        System.out.println(emailVerified);
         if (expectedEmailAddress != null && !emailFromIDToken.equals(expectedEmailAddress)) {
           throw new InvalidObjectException(
-              format("email in ID token '%s' does not match address specified to plugin '%s'",
+              format("Email in ID token '%s' does not match address specified to plugin '%s'",
                   emailFromIDToken, request.emailAddress()));
 
         } else if (Boolean.FALSE.equals(emailVerified)) {
           throw new InvalidObjectException(
-              format("identity provider '%s' reports email address '%s' has not been verified",
+              format("Identity provider '%s' reports email address '%s' has not been verified",
                   parsedIdToken.getPayload().getIssuer(), request.emailAddress()));
         }
         return newResultFrom(result).emailAddress(emailFromIDToken).rawIdToken(idTokenString).build();
       } else {
         String subject = parsedIdToken.getPayload().getSubject();
-        System.out.println("using subject of " + subject);
+        logger.info("Using subject of " + subject);
         return newResultFrom(result).emailAddress(subject).rawIdToken(idTokenString).build();
       }
     } catch (Exception e) {
@@ -158,6 +175,9 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     String subject = result.emailAddress();
     logger.debug("request.emailAddress() = " + request.emailAddress());
 
+    // Pluggable validators for different types of subjects
+
+    // The subject may not be an email, if it's a workload identity
     //EmailValidator ev = EmailValidator.getInstance();
     //if (!ev.isValid(emailAddress)) {
     //  throw new IllegalArgumentException(
@@ -165,14 +185,13 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     //}
 
     try {
-      logger.info(format("signing subject '%s' as proof of possession of private key", subject));
+      logger.info(format("Signing subject '%s' as proof of possession of private key", subject));
       Signature sig;
       if ("EC".equals(privateKey.getAlgorithm())) {
         sig = Signature.getInstance("SHA256withECDSA");
       } else {
         throw new NoSuchAlgorithmException(
-            format("unable to generate signature for signing algorithm %s",
-                request.signingAlgorithm()));
+            format("Unable to generate signature for signing algorithm %s", request.signingAlgorithm()));
       }
       sig.initSign(privateKey);
       sig.update(subject.getBytes());
@@ -189,7 +208,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     String idToken = result.rawIdToken();
 
     try {
-      String publicKeyB64 = Base64.getEncoder().encodeToString(pubKey.getEncoded());
+      String publicKeyB64 = getEncoder().encodeToString(pubKey.getEncoded());
       Map<String, Object> fulcioPostContent = new HashMap<>();
       Map<String, Object> publicKeyContent = new HashMap<>();
       publicKeyContent.put("content", publicKeyB64);
@@ -246,14 +265,14 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     logger.info("writing signing certificate to " + outputSigningCert.getAbsolutePath());
     try {
       final String lineSeparator = System.getProperty("line.separator");
-      Base64.Encoder encoder = Base64.getMimeEncoder(64, lineSeparator.getBytes());
+      Encoder encoder = getMimeEncoder(64, lineSeparator.getBytes());
       // we only write the first one, not the entire chain
       byte[] rawCrtText = certs.getCertificates().get(0).getEncoded();
       String encodedCertText = new String(encoder.encode(rawCrtText));
       String prettifiedCert = "-----BEGIN CERTIFICATE-----" + lineSeparator + encodedCertText + lineSeparator
           + "-----END CERTIFICATE-----";
       String b64PublicKey = base64(prettifiedCert.getBytes(StandardCharsets.UTF_8));
-      Files.writeString(outputSigningCert.toPath(), prettifiedCert);
+      writeString(outputSigningCert.toPath(), prettifiedCert);
       return newResultFrom(result).publicKeyContent(b64PublicKey).build();
     } catch (Exception e) {
       throw new Exception(format("Error writing signing certificate to file '%s':",
@@ -267,8 +286,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       signature.initSign(result.keyPair().getPrivate());
       signature.update(Files.readAllBytes(request.artifact()));
       byte[] artifactSignatureBytes = signature.sign();
-      String b64ArtifactSignatureContent = Base64.getEncoder().encodeToString(artifactSignatureBytes);
-      Files.writeString(request.artifactSignature(), b64ArtifactSignatureContent);
+      String b64ArtifactSignatureContent = getEncoder().encodeToString(artifactSignatureBytes);
+      writeString(request.artifactSignature(), b64ArtifactSignatureContent);
       return newResultFrom(result).artifactSignatureContent(b64ArtifactSignatureContent).build();
     } catch (Exception e) {
       throw new Exception("Error signing JAR file:", e);

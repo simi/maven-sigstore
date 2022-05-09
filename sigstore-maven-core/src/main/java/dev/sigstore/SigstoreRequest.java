@@ -108,7 +108,7 @@ public abstract class SigstoreRequest {
   @Nullable
   public abstract SshRequest sshRequest();
 
-  enum Type {
+  public enum Type {
     PGP("pgp"),
     X_509("x509"),
     SSH("ssh");

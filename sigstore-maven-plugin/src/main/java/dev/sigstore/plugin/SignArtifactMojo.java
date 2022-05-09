@@ -146,10 +146,8 @@ public class SignArtifactMojo extends AbstractMojo {
 
   private File sign(File file) throws MojoExecutionException {
     SigstoreRequest request = builder().build();
-
     try {
-      SigstoreResult result = new SigstoreSigner(request).executeSigstoreFlow();
-      logger.info(format("Created entry in transparency log for JAR @ '%s'", result.rekorEntryUrl()));
+      SigstoreResult result = new SigstoreSigner(request).sign();
     } catch(Exception e) {
       throw new MojoExecutionException(e);
     }
