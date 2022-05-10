@@ -30,7 +30,7 @@ under the License.
   
   <groupId>ca.vanzyl.sigstore.maven</groupId>
   <artifactId>sigstore-maven</artifactId>
-  <version>0.0.4</version>
+  <version>0.0.5-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Sigstore Maven</name>
@@ -114,12 +114,12 @@ under the License.
       <dependency>
         <groupId>ca.vanzyl.sigstore.maven</groupId>
         <artifactId>sigstore-maven-core</artifactId>
-        <version>0.0.4</version>
+        <version>0.0.5-SNAPSHOT</version>
       </dependency>
       <dependency>
         <groupId>ca.vanzyl.sigstore.maven</groupId>
         <artifactId>sigstore-maven-model</artifactId>
-        <version>0.0.4</version>
+        <version>0.0.5-SNAPSHOT</version>
       </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
@@ -294,8 +294,4 @@ under the License.
       </dependency>
     </dependencies>
   </dependencyManagement>
-
-  <scm>
-    <tag>sigstore-maven-0.0.4</tag>
-  </scm>
 </project>
