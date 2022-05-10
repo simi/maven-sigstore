@@ -94,6 +94,7 @@ public abstract class SigstoreRequest {
     return "https://rekor.sigstore.dev";
   }
 
+  @Nullable
   public abstract String emailAddress();
 
   @Value.Default

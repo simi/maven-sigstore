@@ -46,17 +46,17 @@ public class SignMojo extends AbstractMojo {
   // Modes
   // ---------------------------------------------------------------------------
   //
-  // sigstore x509 signatures
-  // maven pgp signatures with sigstore x509 signatures
-  // maven pgp signatures with sigstore PGP signatures
+  // sigstore x509 signatures only
+  // standard maven pgp signatures with sigstore x509 signatures
+  // standard maven pgp signatures with sigstore PGP signatures
   //
 
   // ---------------------------------------------------------------------------
   // PGP
   // ---------------------------------------------------------------------------
 
-  @Parameter(property = "pgpEnable")
-  private boolean pgpEnabled;
+  @Parameter(property = "mavenPgpSignatures")
+  private boolean mavenPgpSignatures;
 
   @Parameter(property = "pgpPassphrase")
   private String pgpPassphrase;
@@ -179,7 +179,6 @@ public class SignMojo extends AbstractMojo {
         SigstoreRequest request = builder()
             .artifact(file)
             .type(X_509)
-            .emailAddress("jason@vanzyl.ca")
             .build();
         SigstoreResult result = new SigstoreSigner(request).sign();
         projectHelper.attachArtifact(project, signedFile.extension() + X509_SIGNATURE_EXTENSION, signedFile.classifier(), result.artifactSignature().toFile());
@@ -188,7 +187,7 @@ public class SignMojo extends AbstractMojo {
         throw new MojoExecutionException(e);
       }
 
-      if (pgpEnabled) {
+      if (mavenPgpSignatures) {
         try {
           PgpArtifactSigner signer = new PgpArtifactSigner();
           File pgpSignature = signer.sign(file.toFile(), pgpPassphrase);
