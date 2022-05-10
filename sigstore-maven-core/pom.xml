@@ -28,7 +28,12 @@ under the License.
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   <artifactId>sigstore-maven-core</artifactId>
+  <packaging>takari-jar</packaging>
   <name>Sigstore Maven Core</name>
+
+  <properties>
+    <takari.annotationProcessing>proc</takari.annotationProcessing>
+  </properties>
 
   <dependencies>
     <dependency>
@@ -76,9 +81,30 @@ under the License.
       <groupId>ca.vanzyl.sigstore.maven</groupId>
       <artifactId>sigstore-maven-model</artifactId>
     </dependency>
+    <!-- Google HTTP client -->
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>4.5.13</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client</artifactId>
+      <version>1.39.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client-gson</artifactId>
+      <version>1.41.0</version>
+    </dependency>
     <dependency>
       <groupId>com.google.oauth-client</groupId>
       <artifactId>google-oauth-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client-java6</artifactId>
+      <version>1.32.1</version>
     </dependency>
     <dependency>
       <groupId>com.google.api-client</groupId>

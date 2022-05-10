@@ -23,11 +23,11 @@ under the License.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.apache.maven</groupId>
-    <artifactId>maven-parent</artifactId>
-    <version>35</version>
+    <groupId>io.takari</groupId>
+    <artifactId>takari</artifactId>
+    <version>47</version>
   </parent>
-
+  
   <groupId>ca.vanzyl.sigstore.maven</groupId>
   <artifactId>sigstore-maven</artifactId>
   <version>0.0.1-SNAPSHOT</version>
@@ -41,12 +41,6 @@ under the License.
     <module>sigstore-maven-model</module>
     <module>sigstore-maven-plugin</module>
   </modules>
-
-  <scm>
-    <connection>scm:git:git@github.com/jvanzyl/maven-sigstore.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/jvanzyl/maven-sigstore.git</developerConnection>
-    <url>https://github.com/jvanzyl/maven-sigstore</url>
-  </scm>
 
   <contributors>
     <contributor>
@@ -188,6 +182,12 @@ under the License.
       <dependency>
         <groupId>org.apache.maven</groupId>
         <artifactId>maven-core</artifactId>
+        <version>${mavenVersion}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-model</artifactId>
         <version>${mavenVersion}</version>
         <scope>provided</scope>
       </dependency>

@@ -28,6 +28,7 @@ under the License.
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   <artifactId>sigstore-maven-model</artifactId>
+  <packaging>takari-jar</packaging>  
   <name>Sigstore Maven Model</name>
 
   <dependencies>
