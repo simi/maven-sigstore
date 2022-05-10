@@ -5,6 +5,9 @@ import static org.codehaus.plexus.util.FileUtils.copyDirectoryStructure;
 import static org.junit.Assert.assertTrue;
 
 import dev.sigstore.pgp.support.PgpKeyPairGenerator;
+import dev.sigstore.pgp.support.PgpKeyRingLoader;
+import dev.sigstore.pgp.support.PgpMessageSigner;
+import dev.sigstore.pgp.support.PgpMessageVerifier;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

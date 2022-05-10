@@ -1,4 +1,4 @@
-package dev.sigstore.pgp.key;
+package dev.sigstore.pgp.support.key;
 
 //
 // Copyright 2021 The Sigstore Authors.
@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.bouncycastle.openpgp.PGPObjectFactory;
 import org.bouncycastle.openpgp.PGPSecretKey;
 import org.bouncycastle.openpgp.PGPSecretKeyRing;
-import org.bouncycastle.openpgp.PGPUtil;
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
 
 public class FilePrivateKeySource {

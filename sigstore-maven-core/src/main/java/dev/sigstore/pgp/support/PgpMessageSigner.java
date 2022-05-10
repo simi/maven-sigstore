@@ -1,4 +1,4 @@
-package dev.sigstore.pgp;
+package dev.sigstore.pgp.support;
 
 //
 // Copyright 2021 The Sigstore Authors.
@@ -16,7 +16,7 @@ package dev.sigstore.pgp;
 // limitations under the License.
 //
 
-import static dev.sigstore.pgp.IOUtils.process;
+import static dev.sigstore.pgp.support.IOUtils.process;
 
 import java.io.IOException;
 import java.io.InputStream;

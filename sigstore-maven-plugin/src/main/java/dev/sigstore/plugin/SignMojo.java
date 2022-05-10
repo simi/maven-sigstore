@@ -8,7 +8,7 @@ import static java.nio.file.Files.createDirectories;
 import dev.sigstore.SigstoreRequest;
 import dev.sigstore.SigstoreResult;
 import dev.sigstore.SigstoreSigner;
-import dev.sigstore.pgp.PgpArtifactSigner;
+import dev.sigstore.pgp.support.PgpArtifactSigner;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;

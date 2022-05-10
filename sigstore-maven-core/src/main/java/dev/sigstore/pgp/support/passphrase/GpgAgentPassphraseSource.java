@@ -1,4 +1,4 @@
-package dev.sigstore.pgp.passphrase;
+package dev.sigstore.pgp.support.passphrase;
 
 //
 // Copyright 2021 The Sigstore Authors.
@@ -16,7 +16,7 @@ package dev.sigstore.pgp.passphrase;
 // limitations under the License.
 //
 
-import dev.sigstore.pgp.PgpKeyRingLoader;
+import dev.sigstore.pgp.support.PgpKeyRingLoader;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;

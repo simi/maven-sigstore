@@ -1,4 +1,4 @@
-package dev.sigstore.pgp.passphrase;
+package dev.sigstore.pgp.support.passphrase;
 
 //
 // Copyright 2021 The Sigstore Authors.
@@ -16,10 +16,23 @@ package dev.sigstore.pgp.passphrase;
 // limitations under the License.
 //
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import org.bouncycastle.openpgp.PGPSecretKey;
 
-public interface PassphraseSource {
+public class FilePassphraseSource implements PassphraseSource {
 
-  String load(PGPSecretKey secretKey) throws IOException;
+  private File file;
+
+  public FilePassphraseSource(File file) {
+    this.file = file;
+  }
+
+  public String load(PGPSecretKey secretKey) throws IOException {
+    if (!file.exists()) {
+      return null;
+    }
+    return new String(Files.readAllBytes(file.toPath())).trim();
+  }
 }

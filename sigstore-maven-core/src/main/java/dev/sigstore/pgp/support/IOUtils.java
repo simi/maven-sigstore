@@ -1,4 +1,4 @@
-package dev.sigstore.pgp;
+package dev.sigstore.pgp.support;
 
 //
 // Copyright 2021 The Sigstore Authors.

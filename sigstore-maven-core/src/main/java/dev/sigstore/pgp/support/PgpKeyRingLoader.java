@@ -1,4 +1,4 @@
-package dev.sigstore.pgp;
+package dev.sigstore.pgp.support;
 
 //
 // Copyright 2021 The Sigstore Authors.
@@ -16,7 +16,7 @@ package dev.sigstore.pgp;
 // limitations under the License.
 //
 
-import static dev.sigstore.pgp.PgpSupport.DEFAULT_PGP_KEYRING;
+import static dev.sigstore.pgp.support.PgpSupport.DEFAULT_PGP_KEYRING;
 
 import java.io.File;
 import java.io.FileInputStream;
