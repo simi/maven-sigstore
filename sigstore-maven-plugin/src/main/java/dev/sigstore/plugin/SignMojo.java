@@ -173,11 +173,15 @@ public class SignMojo extends AbstractMojo {
       mavenFilesToSign.add(new SignedFile(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
     }
 
-    // The are the Maven produced files to be signed with sigstore:
+    // We have an example build that we use for testing here: https://github.com/jvanzyl/maven-sigstore-test
     //
-    // maven-sigstore-test-0.0.13.jar
-    // maven-sigstore-test-0.0.13.pom
-    // maven-sigstore-test-0.0.13-sources.jar
+    // The comments and notes below are an illustration of the signing process with this project.
+    //
+    // These are the Maven produced files to be signed with sigstore:
+    //
+    // maven-sigstore-test-{{version}}.jar
+    // maven-sigstore-test-{{version}}.pom
+    // maven-sigstore-test-{{version}}-sources.jar
 
     logger.info("Signing the following files sigstore:");
     mavenFilesToSign.forEach(s -> System.out.println(s));
@@ -203,15 +207,15 @@ public class SignMojo extends AbstractMojo {
       }
     }
 
-    // maven-sigstore-test-0.0.13.jar
-    // maven-sigstore-test-0.0.13.jar.sig
-    // maven-sigstore-test-0.0.13.jar.pem
-    // maven-sigstore-test-0.0.13.pom
-    // maven-sigstore-test-0.0.13.pom.sig
-    // maven-sigstore-test-0.0.13.pom.pem
-    // maven-sigstore-test-0.0.13-sources.jar
-    // maven-sigstore-test-0.0.13-sources.jar.sig
-    // maven-sigstore-test-0.0.13-sources.jar.pem
+    // maven-sigstore-test-{{version}}.jar
+    // maven-sigstore-test-{{version}}.jar.sig
+    // maven-sigstore-test-{{version}}.jar.pem
+    // maven-sigstore-test-{{version}}.pom
+    // maven-sigstore-test-{{version}}.pom.sig
+    // maven-sigstore-test-{{version}}.pom.pem
+    // maven-sigstore-test-{{version}}-sources.jar
+    // maven-sigstore-test-{{version}}-sources.jar.sig
+    // maven-sigstore-test-{{version}}-sources.jar.pem
 
     logger.info("Signing the following files with PGP:");
     filesToSignWithPgp.forEach(s -> System.out.println(s));
@@ -228,24 +232,23 @@ public class SignMojo extends AbstractMojo {
       }
     }
 
-    // maven-sigstore-test-0.0.13.jar
-    // maven-sigstore-test-0.0.13.jar.asc
-    // maven-sigstore-test-0.0.13.jar.sig
-    // maven-sigstore-test-0.0.13.jar.sig.asc (incorrect)
-    // maven-sigstore-test-0.0.13.jar.pem
-    // maven-sigstore-test-0.0.13.jar.pem.asc (incorrect)
-    // maven-sigstore-test-0.0.13.pom
-    // maven-sigstore-test-0.0.13.pom.asc
-    // maven-sigstore-test-0.0.13.pom.sig
-    // maven-sigstore-test-0.0.13.pom.sig.asc
-    // maven-sigstore-test-0.0.13.pom.pem
-    // maven-sigstore-test-0.0.13.pom.pem.asc
-    // maven-sigstore-test-0.0.13-sources.jar
-    // maven-sigstore-test-0.0.13-sources.jar.asc
-    // maven-sigstore-test-0.0.13-sources.jar.sig
-    // maven-sigstore-test-0.0.13-sources.jar.sig.asc (missing)
-    // maven-sigstore-test-0.0.13-sources.jar.pem
-    // maven-sigstore-test-0.0.13-sources.jar.pem.asc (missing)
-
+    // maven-sigstore-test-{{version}}.jar
+    // maven-sigstore-test-{{version}}.jar.asc
+    // maven-sigstore-test-{{version}}.jar.sig
+    // maven-sigstore-test-{{version}}.jar.sig.asc
+    // maven-sigstore-test-{{version}}.jar.pem
+    // maven-sigstore-test-{{version}}.jar.pem.asc
+    // maven-sigstore-test-{{version}}.pom
+    // maven-sigstore-test-{{version}}.pom.asc
+    // maven-sigstore-test-{{version}}.pom.sig
+    // maven-sigstore-test-{{version}}.pom.sig.asc
+    // maven-sigstore-test-{{version}}.pom.pem
+    // maven-sigstore-test-{{version}}.pom.pem.asc
+    // maven-sigstore-test-{{version}}-sources.jar
+    // maven-sigstore-test-{{version}}-sources.jar.asc
+    // maven-sigstore-test-{{version}}-sources.jar.sig
+    // maven-sigstore-test-{{version}}-sources.jar.sig.asc
+    // maven-sigstore-test-{{version}}-sources.jar.pem
+    // maven-sigstore-test-{{version}}-sources.jar.pem.asc
   }
 }
