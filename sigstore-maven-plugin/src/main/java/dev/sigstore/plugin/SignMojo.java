@@ -139,7 +139,7 @@ public class SignMojo extends AbstractMojo {
 
   @Override
   public void execute() throws MojoExecutionException {
-    List<SignedFile> signedFiles = new ArrayList<>();
+    List<SignedFile> mavenFilesToSign = new ArrayList<>();
 
     if (!"pom".equals(project.getPackaging())) {
       //
@@ -151,7 +151,7 @@ public class SignMojo extends AbstractMojo {
         logger.info("There is no artifact present. Make sure you run this after the package phase.");
         return;
       }
-      signedFiles.add(new SignedFile(file.toPath(), artifact.getArtifactHandler().getExtension()));
+      mavenFilesToSign.add(new SignedFile(file.toPath(), artifact.getArtifactHandler().getExtension()));
     }
 
     //
@@ -164,42 +164,58 @@ public class SignMojo extends AbstractMojo {
     } catch (IOException e) {
       throw new MojoExecutionException("Error copying POM for signing.", e);
     }
-    signedFiles.add(new SignedFile(pomToSign.toPath(), "pom"));
+    mavenFilesToSign.add(new SignedFile(pomToSign.toPath(), "pom"));
 
     //
     // Attached artifacts
     //
     for (org.apache.maven.artifact.Artifact a : project.getAttachedArtifacts()) {
-      signedFiles.add(new SignedFile(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
+      mavenFilesToSign.add(new SignedFile(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
     }
 
+    // The are the Maven produced files to be signed with sigstore:
+    //
+    // maven-sigstore-test-0.0.13.jar
+    // maven-sigstore-test-0.0.13.pom
+    // maven-sigstore-test-0.0.13-sources.jar
+
     logger.info("Signing the following files sigstore:");
-    signedFiles.forEach(s -> System.out.println(s.file()));
-    List<SignedFile> pgpSignedFiles = new ArrayList<>();
-    for (SignedFile signedFile : signedFiles) {
-      Path file = signedFile.file();
+    mavenFilesToSign.forEach(s -> System.out.println(s));
+    List<SignedFile> filesToSignWithPgp = new ArrayList<>();
+    for (SignedFile mavenFileToSign : mavenFilesToSign) {
+      Path file = mavenFileToSign.file();
       try {
         SigstoreRequest request = builder()
             .artifact(file)
             .type(X_509)
             .build();
-        // Any file we need to sign with sigstore needs to be signed with PGP
-        pgpSignedFiles.add(signedFile);
+        // The Maven file we pass along to be signed with PGP
         SigstoreResult result = new SigstoreSigner(request).sign();
-        // The .sig file
-        projectHelper.attachArtifact(project, signedFile.extension() + X509_SIGNATURE_EXTENSION, signedFile.classifier(), result.artifactSignature().toFile());
-        pgpSignedFiles.add(new SignedFile(request.artifactSignature(), signedFile.extension() + X509_SIGNATURE_EXTENSION));
-        // The .pem file
-        projectHelper.attachArtifact(project, signedFile.extension() + X509_CERTIFICATE_EXTENSION, signedFile.classifier(), result.signingCertificate().toFile());
-        pgpSignedFiles.add(new SignedFile(request.outputSigningCert(), signedFile.extension() + X509_CERTIFICATE_EXTENSION));
+        filesToSignWithPgp.add(mavenFileToSign);
+        // The sigstore .sig file
+        projectHelper.attachArtifact(project, mavenFileToSign.extension() + X509_SIGNATURE_EXTENSION, mavenFileToSign.classifier(), result.artifactSignature().toFile());
+        filesToSignWithPgp.add(new SignedFile(request.artifactSignature(), mavenFileToSign.extension() + X509_SIGNATURE_EXTENSION, mavenFileToSign.classifier()));
+        // The sigstore .pem file
+        projectHelper.attachArtifact(project, mavenFileToSign.extension() + X509_CERTIFICATE_EXTENSION, mavenFileToSign.classifier(), result.signingCertificate().toFile());
+        filesToSignWithPgp.add(new SignedFile(request.outputSigningCert(), mavenFileToSign.extension() + X509_CERTIFICATE_EXTENSION, mavenFileToSign.classifier()));
       } catch (Exception e) {
         throw new MojoExecutionException(e);
       }
     }
 
+    // maven-sigstore-test-0.0.13.jar
+    // maven-sigstore-test-0.0.13.jar.sig
+    // maven-sigstore-test-0.0.13.jar.pem
+    // maven-sigstore-test-0.0.13.pom
+    // maven-sigstore-test-0.0.13.pom.sig
+    // maven-sigstore-test-0.0.13.pom.pem
+    // maven-sigstore-test-0.0.13-sources.jar
+    // maven-sigstore-test-0.0.13-sources.jar.sig
+    // maven-sigstore-test-0.0.13-sources.jar.pem
+
     logger.info("Signing the following files with PGP:");
-    pgpSignedFiles.forEach(s -> System.out.println(s.file()));
-    for (SignedFile pgpSignedFile : pgpSignedFiles) {
+    filesToSignWithPgp.forEach(s -> System.out.println(s));
+    for (SignedFile pgpSignedFile : filesToSignWithPgp) {
       Path file = pgpSignedFile.file();
       if (mavenPgpSignatures) {
         try {
@@ -211,5 +227,25 @@ public class SignMojo extends AbstractMojo {
         }
       }
     }
+
+    // maven-sigstore-test-0.0.13.jar
+    // maven-sigstore-test-0.0.13.jar.asc
+    // maven-sigstore-test-0.0.13.jar.sig
+    // maven-sigstore-test-0.0.13.jar.sig.asc (incorrect)
+    // maven-sigstore-test-0.0.13.jar.pem
+    // maven-sigstore-test-0.0.13.jar.pem.asc (incorrect)
+    // maven-sigstore-test-0.0.13.pom
+    // maven-sigstore-test-0.0.13.pom.asc
+    // maven-sigstore-test-0.0.13.pom.sig
+    // maven-sigstore-test-0.0.13.pom.sig.asc
+    // maven-sigstore-test-0.0.13.pom.pem
+    // maven-sigstore-test-0.0.13.pom.pem.asc
+    // maven-sigstore-test-0.0.13-sources.jar
+    // maven-sigstore-test-0.0.13-sources.jar.asc
+    // maven-sigstore-test-0.0.13-sources.jar.sig
+    // maven-sigstore-test-0.0.13-sources.jar.sig.asc (missing)
+    // maven-sigstore-test-0.0.13-sources.jar.pem
+    // maven-sigstore-test-0.0.13-sources.jar.pem.asc (missing)
+
   }
 }

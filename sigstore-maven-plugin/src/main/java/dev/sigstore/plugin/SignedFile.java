@@ -45,4 +45,13 @@ public class SignedFile {
   public String classifier() {
     return classifier;
   }
+
+  @Override
+  public String toString() {
+    return "SignedFile{" +
+        "file=" + file +
+        ", extension='" + extension + '\'' +
+        ", classifier='" + classifier + '\'' +
+        '}';
+  }
 }
