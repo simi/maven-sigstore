@@ -24,16 +24,17 @@ import dev.sigstore.SigstoreResult;
 import dev.sigstore.SigstoreSigner;
 import dev.sigstore.SigstoreTestSupport;
 import java.nio.file.Path;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class X509ProcessorTest extends SigstoreTestSupport {
 
   @Test
+  @Ignore
   public void validateSigning() throws Exception {
     Path artifact = jarArtifact("test-1.0");
     SigstoreRequest request = localRequestBuilder()
         .type(X_509)
-        .emailAddress("jason@vanzyl.ca")
         .artifact(artifact)
         .build();
     SigstoreSigner signer = new SigstoreSigner(request);
