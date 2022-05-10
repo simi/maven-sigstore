@@ -173,6 +173,8 @@ public class SignMojo extends AbstractMojo {
       signedFiles.add(new SignedFile(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
     }
 
+    logger.info("Signing the following files sigstore:");
+    signedFiles.forEach(s -> System.out.println(s.file()));
     List<SignedFile> pgpSignedFiles = new ArrayList<>();
     for (SignedFile signedFile : signedFiles) {
       Path file = signedFile.file();
@@ -185,16 +187,18 @@ public class SignMojo extends AbstractMojo {
         pgpSignedFiles.add(signedFile);
         SigstoreResult result = new SigstoreSigner(request).sign();
         // The .sig file
-        projectHelper.attachArtifact(project, signedFile.extension() + X509_SIGNATURE_EXTENSION, signedFile.classifier(), result.artifactSignature().toFile());
+        projectHelper.attachArtifact(project, signedFile.extension() + X509_SIGNATURE_EXTENSION, result.artifactSignature().toFile());
         pgpSignedFiles.add(new SignedFile(request.artifactSignature(), X509_SIGNATURE_EXTENSION));
         // The .pem file
-        projectHelper.attachArtifact(project, signedFile.extension() + X509_CERTIFICATE_EXTENSION, signedFile.classifier(), result.signingCertificate().toFile());
+        projectHelper.attachArtifact(project, signedFile.extension() + X509_CERTIFICATE_EXTENSION, result.signingCertificate().toFile());
         pgpSignedFiles.add(new SignedFile(request.outputSigningCert(),  X509_CERTIFICATE_EXTENSION));
       } catch (Exception e) {
         throw new MojoExecutionException(e);
       }
     }
 
+    logger.info("Signing the following files with PGP:");
+    pgpSignedFiles.forEach(s -> System.out.println(s.file()));
     for (SignedFile pgpSignedFile : pgpSignedFiles) {
       Path file = pgpSignedFile.file();
       if (mavenPgpSignatures) {
