@@ -1,10 +1,10 @@
 package dev.sigstore.pgp;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.codehaus.plexus.util.FileUtils.copyDirectoryStructure;
 import static org.junit.Assert.assertTrue;
 
-import dev.sigstore.pgp.PgpKeyPairGenerator;
-import dev.sigstore.pgp.PgpMessageSigner;
-import dev.sigstore.pgp.PgpMessageVerifier;
+import dev.sigstore.pgp.support.PgpKeyPairGenerator;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -12,14 +12,36 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import org.bouncycastle.openpgp.PGPKeyPair;
+import org.bouncycastle.openpgp.PGPSecretKey;
 import org.codehaus.plexus.util.FileUtils;
+import org.junit.Before;
 import org.junit.Test;
 
-public class PGPSignAndVerifyRoundtripTest {
+public class PgpSigningTest {
 
-  String basedir;
-  File sourceDirectory;
-  File workingDirectory;
+  protected String basedir;
+  protected File sourceDirectory;
+  protected File workingDirectory;
+
+  @Before
+  public void setUp() {
+    basedir = System.getProperty("basedir", new File("").getAbsolutePath());
+  }
+
+  @Test
+  public void validateGnupgSigning() throws Exception {
+    basedir = System.getProperty("basedir", new File("").getAbsolutePath());
+    sourceDirectory = new File(basedir, "src/test/files/gnupg");
+    workingDirectory = new File(basedir, "target/files/gnupg");
+    copyDirectoryStructure(sourceDirectory, workingDirectory);
+
+    PgpKeyRingLoader loader = new PgpKeyRingLoader();
+    PGPSecretKey secretKey = loader.load(file("secring.gpg"));
+    PgpMessageSigner signer = new PgpMessageSigner();
+    InputStream message = inputStream("artifact-1.0.jar");
+    OutputStream signature = outputStream("artifact-1.0.jar.asc");
+    assertThat(signer.signMessage(secretKey, "samuel", message, signature)).isTrue();
+  }
 
   @Test
   public void validateRoundtrip() throws Exception {
@@ -68,15 +90,15 @@ public class PGPSignAndVerifyRoundtripTest {
     }
   }
 
-  private InputStream inputStream(String name) throws IOException {
+  protected InputStream inputStream(String name) throws IOException {
     return new FileInputStream(file(name));
   }
 
-  private OutputStream outputStream(String name) throws IOException {
+  protected OutputStream outputStream(String name) throws IOException {
     return new FileOutputStream(file(name));
   }
 
-  private File file(String name) {
+  protected File file(String name) {
     return new File(workingDirectory, name);
   }
 }

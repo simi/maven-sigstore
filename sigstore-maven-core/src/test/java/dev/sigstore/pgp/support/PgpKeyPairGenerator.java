@@ -1,4 +1,4 @@
-package dev.sigstore.pgp;
+package dev.sigstore.pgp.support;
 
 import java.io.OutputStream;
 import java.security.KeyPairGenerator;

@@ -1,5 +1,7 @@
 package dev.sigstore.pgp;
 
+import static dev.sigstore.pgp.IOUtils.process;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -35,16 +37,16 @@ public class PgpMessageSigner extends PgpSupport {
     }
   }
 
-  public void signMessage(PGPSecretKey secretKey, String passwordOfPrivateKey, InputStream message, OutputStream signature) throws PGPException, IOException {
+  public boolean signMessage(PGPSecretKey secretKey, String passwordOfPrivateKey, InputStream message, OutputStream signature) throws PGPException, IOException {
     PGPPrivateKey privateKey = findPrivateKey(secretKey, passwordOfPrivateKey);
-    signatureGenerator(message, signature, privateKey);
+    return signatureGenerator(message, signature, privateKey);
   }
 
   private boolean signatureGenerator(InputStream message, OutputStream signature, PGPPrivateKey privateKey) throws PGPException, IOException {
     final PGPSignatureGenerator signatureGenerator = new PGPSignatureGenerator(new BcPGPContentSignerBuilder(privateKey.getPublicKeyPacket().getAlgorithm(), HashAlgorithmTags.SHA256));
     signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, privateKey);
     try (BCPGOutputStream outputStream = new BCPGOutputStream(new ArmoredOutputStream(signature))) {
-      IOUtils.process(message, signatureGenerator::update);
+      process(message, signatureGenerator::update);
       signatureGenerator.generate().encode(outputStream);
     }
     return true;

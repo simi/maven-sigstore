@@ -1,4 +1,4 @@
-package dev.sigstore.pgp;
+package dev.sigstore.pgp.support;
 
 import java.util.ArrayList;
 import java.util.List;

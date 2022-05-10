@@ -28,6 +28,4 @@ public abstract class SshRequest {
   public abstract Path privateKey();
 
   public abstract Path publicKey();
-
-
 }

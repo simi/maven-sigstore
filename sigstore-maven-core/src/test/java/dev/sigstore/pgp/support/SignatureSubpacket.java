@@ -1,4 +1,4 @@
-package dev.sigstore.pgp;
+package dev.sigstore.pgp.support;
 
 import static org.bouncycastle.bcpg.SignatureSubpacketTags.ATTESTED_CERTIFICATIONS;
 import static org.bouncycastle.bcpg.SignatureSubpacketTags.CREATION_TIME;

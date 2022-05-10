@@ -1,4 +1,4 @@
-package dev.sigstore.pgp;
+package dev.sigstore.pgp.support;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -19,14 +19,14 @@ public final class SignatureSubpacketGeneratorUtil {
   }
 
   /**
-   * Return a list of {@link SignatureSubpacket SignatureSubpackets} from the subpacket generator, which correspond to the given {@link dev.sigstore.pgp.SignatureSubpacket} type.
+   * Return a list of {@link SignatureSubpacket SignatureSubpackets} from the subpacket generator, which correspond to the given {@link dev.sigstore.pgp.support.SignatureSubpacket} type.
    *
    * @param type subpacket type
    * @param generator subpacket generator
    * @param <P> generic subpacket type
    * @return possibly empty list of subpackets
    */
-  public static <P extends SignatureSubpacket> List<P> getSubpacketsOfType(dev.sigstore.pgp.SignatureSubpacket type,
+  public static <P extends SignatureSubpacket> List<P> getSubpacketsOfType(dev.sigstore.pgp.support.SignatureSubpacket type,
       PGPSignatureSubpacketGenerator generator) {
     SignatureSubpacket[] subpackets = generator.getSubpackets(type.getCode());
     List<P> list = new ArrayList<>();
@@ -42,7 +42,7 @@ public final class SignatureSubpacketGeneratorUtil {
    * @param subpacketType type of subpacket to remove
    * @param subpacketGenerator subpacket generator
    */
-  public static void removeAllPacketsOfType(dev.sigstore.pgp.SignatureSubpacket subpacketType,
+  public static void removeAllPacketsOfType(dev.sigstore.pgp.support.SignatureSubpacket subpacketType,
       PGPSignatureSubpacketGenerator subpacketGenerator) {
     removeAllPacketsOfType(subpacketType.getCode(), subpacketGenerator);
   }
@@ -117,7 +117,7 @@ public final class SignatureSubpacketGeneratorUtil {
    * @return true if the generator has the given key flag set
    */
   public static boolean hasKeyFlag(KeyFlag keyFlag, PGPSignatureSubpacketGenerator generator) {
-    List<KeyFlags> keyFlagPackets = getSubpacketsOfType(dev.sigstore.pgp.SignatureSubpacket.keyFlags, generator);
+    List<KeyFlags> keyFlagPackets = getSubpacketsOfType(dev.sigstore.pgp.support.SignatureSubpacket.keyFlags, generator);
     if (keyFlagPackets.isEmpty()) {
       return false;
     }
