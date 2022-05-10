@@ -42,6 +42,12 @@ under the License.
     <module>sigstore-maven-plugin</module>
   </modules>
 
+  <scm>
+    <connection>scm:git:git@github.com/jvanzyl/maven-sigstore.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/jvanzyl/maven-sigstore.git</developerConnection>
+    <url>https://github.com/jvanzyl/maven-sigstore</url>
+  </scm>
+
   <contributors>
     <contributor>
       <name>Bob Callaway</name>
