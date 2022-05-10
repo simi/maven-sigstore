@@ -28,7 +28,7 @@ under the License.
     <version>35</version>
   </parent>
 
-  <groupId>org.apache.maven.sigstore</groupId>
+  <groupId>ca.vanzyl.sigstore.maven</groupId>
   <artifactId>sigstore-maven</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
@@ -125,12 +125,12 @@ under the License.
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>org.apache.maven.sigstore</groupId>
+        <groupId>ca.vanzyl.sigstore.maven</groupId>
         <artifactId>sigstore-maven-core</artifactId>
         <version>0.0.1-SNAPSHOT</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.maven.sigstore</groupId>
+        <groupId>ca.vanzyl.sigstore.maven</groupId>
         <artifactId>sigstore-maven-model</artifactId>
         <version>0.0.1-SNAPSHOT</version>
       </dependency>
@@ -170,6 +170,11 @@ under the License.
         <version>${junixsocket.version}</version>
       </dependency>
       <!-- Jackson -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>      
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-core</artifactId>
@@ -251,12 +256,7 @@ under the License.
         <artifactId>commons-validator</artifactId>
         <version>1.7</version>
       </dependency>
-      <dependency>
-        <groupId>org.apache.maven.shared</groupId>
-        <artifactId>maven-jarsigner</artifactId>
-        <version>3.0.0</version>
-      </dependency>
-      <!-- Immutable -->
+      <!-- Immutables -->
       <!-- These are required for use of Immutables -->
       <dependency>
         <groupId>org.immutables</groupId>
