@@ -12,6 +12,7 @@ import dev.sigstore.pgp.PgpArtifactSigner;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -127,7 +128,7 @@ public class SignMojo extends AbstractMojo {
   /**
    * Email address of signer; if not specified, the email address returned in the OIDC identity token will be used
    */
-  @Parameter(property = "email-address")
+  @Parameter(property = "emailAddress")
   private String emailAddress;
 
   /**
@@ -138,11 +139,11 @@ public class SignMojo extends AbstractMojo {
 
   @Override
   public void execute() throws MojoExecutionException {
-    List<SignedBlob> signedBlobs = new ArrayList<>();
+    List<SignedFile> signedFiles = new ArrayList<>();
 
     if (!"pom".equals(project.getPackaging())) {
       //
-      // Artifact
+      // Primary artifact
       //
       org.apache.maven.artifact.Artifact artifact = project.getArtifact();
       File file = artifact.getFile();
@@ -150,7 +151,7 @@ public class SignMojo extends AbstractMojo {
         logger.info("There is no artifact present. Make sure you run this after the package phase.");
         return;
       }
-      signedBlobs.add(new SignedBlob(file.toPath(), artifact.getArtifactHandler().getExtension()));
+      signedFiles.add(new SignedFile(file.toPath(), artifact.getArtifactHandler().getExtension()));
     }
 
     //
@@ -163,26 +164,26 @@ public class SignMojo extends AbstractMojo {
     } catch (IOException e) {
       throw new MojoExecutionException("Error copying POM for signing.", e);
     }
-    signedBlobs.add(new SignedBlob(pomToSign.toPath(), "pom"));
+    signedFiles.add(new SignedFile(pomToSign.toPath(), "pom"));
 
     //
     // Attached artifacts
     //
     for (org.apache.maven.artifact.Artifact a : project.getAttachedArtifacts()) {
-      signedBlobs.add(new SignedBlob(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
+      signedFiles.add(new SignedFile(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
     }
 
-    for (SignedBlob blob : signedBlobs) {
-      File file = blob.blob().toFile();
+    for (SignedFile signedFile : signedFiles) {
+      Path file = signedFile.file();
       try {
         SigstoreRequest request = builder()
-            .artifact(file.toPath())
+            .artifact(file)
             .type(X_509)
             .emailAddress("jason@vanzyl.ca")
             .build();
         SigstoreResult result = new SigstoreSigner(request).sign();
-        projectHelper.attachArtifact(project, blob.extension() + X509_SIGNATURE_EXTENSION, blob.classifier(), result.artifactSignature().toFile());
-        projectHelper.attachArtifact(project, blob.extension() + X509_CERTIFICATE_EXTENSION, blob.classifier(), result.signingCertificate().toFile());
+        projectHelper.attachArtifact(project, signedFile.extension() + X509_SIGNATURE_EXTENSION, signedFile.classifier(), result.artifactSignature().toFile());
+        projectHelper.attachArtifact(project, signedFile.extension() + X509_CERTIFICATE_EXTENSION, signedFile.classifier(), result.signingCertificate().toFile());
       } catch (Exception e) {
         throw new MojoExecutionException(e);
       }
@@ -190,8 +191,8 @@ public class SignMojo extends AbstractMojo {
       if (pgpEnabled) {
         try {
           PgpArtifactSigner signer = new PgpArtifactSigner();
-          File pgpSignature = signer.sign(file, pgpPassphrase);
-          projectHelper.attachArtifact(project, blob.extension() + PGP_SIGNATURE_EXTENSION, blob.classifier(), pgpSignature);
+          File pgpSignature = signer.sign(file.toFile(), pgpPassphrase);
+          projectHelper.attachArtifact(project, signedFile.extension() + PGP_SIGNATURE_EXTENSION, signedFile.classifier(), pgpSignature);
         } catch (Exception e) {
           throw new MojoExecutionException("Error signing artifact " + file + ".", e);
         }

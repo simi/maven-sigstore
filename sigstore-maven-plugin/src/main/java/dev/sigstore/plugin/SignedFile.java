@@ -1,4 +1,4 @@
-package dev.sigstore;
+package dev.sigstore.plugin;
 
 //
 // Copyright 2021 The Sigstore Authors.
@@ -16,6 +16,33 @@ package dev.sigstore;
 // limitations under the License.
 //
 
-public interface SigstoreProcessor {
-  SigstoreResult process(SigstoreRequest request) throws Exception;
+import java.nio.file.Path;
+
+public class SignedFile {
+
+  private final Path file;
+  private final String extension;
+  private final String classifier;
+
+  public SignedFile(Path file, String extension) {
+    this(file, extension, null);
+  }
+
+  public SignedFile(Path file, String extension, String classifier) {
+    this.file = file;
+    this.extension = extension;
+    this.classifier = classifier;
+  }
+
+  public Path file() {
+    return file;
+  }
+
+  public String extension() {
+    return extension;
+  }
+
+  public String classifier() {
+    return classifier;
+  }
 }
