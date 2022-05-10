@@ -173,6 +173,7 @@ public class SignMojo extends AbstractMojo {
       signedFiles.add(new SignedFile(a.getFile().toPath(), a.getArtifactHandler().getExtension(), a.getClassifier()));
     }
 
+    List<SignedFile> pgpSignedFiles = new ArrayList<>();
     for (SignedFile signedFile : signedFiles) {
       Path file = signedFile.file();
       try {
@@ -180,18 +181,27 @@ public class SignMojo extends AbstractMojo {
             .artifact(file)
             .type(X_509)
             .build();
+        // Any file we need to sign with sigstore needs to be signed with PGP
+        pgpSignedFiles.add(signedFile);
         SigstoreResult result = new SigstoreSigner(request).sign();
+        // The .sig file
         projectHelper.attachArtifact(project, signedFile.extension() + X509_SIGNATURE_EXTENSION, signedFile.classifier(), result.artifactSignature().toFile());
+        pgpSignedFiles.add(new SignedFile(request.artifactSignature(), X509_SIGNATURE_EXTENSION));
+        // The .pem file
         projectHelper.attachArtifact(project, signedFile.extension() + X509_CERTIFICATE_EXTENSION, signedFile.classifier(), result.signingCertificate().toFile());
+        pgpSignedFiles.add(new SignedFile(request.outputSigningCert(),  X509_CERTIFICATE_EXTENSION));
       } catch (Exception e) {
         throw new MojoExecutionException(e);
       }
+    }
 
+    for (SignedFile pgpSignedFile : pgpSignedFiles) {
+      Path file = pgpSignedFile.file();
       if (mavenPgpSignatures) {
         try {
           PgpArtifactSigner signer = new PgpArtifactSigner();
           File pgpSignature = signer.sign(file.toFile(), pgpPassphrase);
-          projectHelper.attachArtifact(project, signedFile.extension() + PGP_SIGNATURE_EXTENSION, signedFile.classifier(), pgpSignature);
+          projectHelper.attachArtifact(project, pgpSignedFile.extension() + PGP_SIGNATURE_EXTENSION, pgpSignedFile.classifier(), pgpSignature);
         } catch (Exception e) {
           throw new MojoExecutionException("Error signing artifact " + file + ".", e);
         }

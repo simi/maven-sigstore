@@ -1,6 +1,48 @@
 # Maven Sigstore
 
 
+maven-sigstore-test-0.0.6-sources.jar
+maven-sigstore-test-0.0.6-sources.jar.asc
+maven-sigstore-test-0.0.6-sources.jar.pem
+maven-sigstore-test-0.0.6-sources.jar.pem.asc
+maven-sigstore-test-0.0.6-sources.jar.sig
+maven-sigstore-test-0.0.6-sources.jar.sig.asc
+maven-sigstore-test-0.0.6.jar
+maven-sigstore-test-0.0.6.jar.asc
+maven-sigstore-test-0.0.6.jar.pem
+maven-sigstore-test-0.0.6.jar.sig
+maven-sigstore-test-0.0.6.pom
+maven-sigstore-test-0.0.6.pom.asc
+maven-sigstore-test-0.0.6.pom.pem
+maven-sigstore-test-0.0.6.pom.pem.asc
+maven-sigstore-test-0.0.6.pom.sig
+maven-sigstore-test-0.0.6.pom.sig.asc
+
+
+```
+maven-sigstore-test-0.0.6-sources.jar
+maven-sigstore-test-0.0.6-sources.jar.asc
+maven-sigstore-test-0.0.6-sources.jar.asc.asc
+maven-sigstore-test-0.0.6-sources.jar.asc.pem
+maven-sigstore-test-0.0.6-sources.jar.asc.sig
+maven-sigstore-test-0.0.6-sources.jar.pem
+maven-sigstore-test-0.0.6-sources.jar.sig
+maven-sigstore-test-0.0.6.jar
+maven-sigstore-test-0.0.6.jar.asc
+maven-sigstore-test-0.0.6.jar.asc.asc
+maven-sigstore-test-0.0.6.jar.asc.pem
+maven-sigstore-test-0.0.6.jar.asc.sig
+maven-sigstore-test-0.0.6.jar.pem
+maven-sigstore-test-0.0.6.jar.sig
+maven-sigstore-test-0.0.6.pom
+maven-sigstore-test-0.0.6.pom.asc
+maven-sigstore-test-0.0.6.pom.asc.asc
+maven-sigstore-test-0.0.6.pom.asc.pem
+maven-sigstore-test-0.0.6.pom.asc.sig
+maven-sigstore-test-0.0.6.pom.pem
+maven-sigstore-test-0.0.6.pom.sig
+```
+
 ## Notes
 
 - [Zero-friction “keyless signing” with Github Actions](https://blog.chainguard.dev/zero-friction-keyless-signing-with-github-actions/)
