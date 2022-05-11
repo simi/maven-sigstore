@@ -1,0 +1,2 @@
+@ImmutablesStyle
+package dev.sigstore;
