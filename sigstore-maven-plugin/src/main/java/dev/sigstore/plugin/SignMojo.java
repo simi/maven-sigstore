@@ -21,6 +21,7 @@ import java.util.List;
 import javax.inject.Inject;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
@@ -28,7 +29,7 @@ import org.apache.maven.project.MavenProjectHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Mojo(name = "sign", configurator = "takari", threadSafe = true)
+@Mojo(name = "sign", defaultPhase = LifecyclePhase.DEPLOY, configurator = "takari", threadSafe = true)
 public class SignMojo extends AbstractMojo {
 
   public static final String PGP_SIGNATURE_EXTENSION = ".asc";
@@ -141,7 +142,6 @@ public class SignMojo extends AbstractMojo {
   @Override
   public void execute() throws MojoExecutionException {
     List<SignedFile> mavenFilesToSign = new ArrayList<>();
-
     if (!"pom".equals(project.getPackaging())) {
       //
       // Primary artifact
