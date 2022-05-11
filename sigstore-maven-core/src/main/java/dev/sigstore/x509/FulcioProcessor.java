@@ -82,11 +82,19 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
 
   @Override
   public SigstoreResult process(SigstoreRequest request) throws Exception {
-    SigstoreResult result = ImmutableSigstoreResult.builder().build();
-    result = generateKeyPair(request, result);
-    result = getIDToken(request, result);
-    result = signSubject(request, result);
-    result = retrieveFulcioSigningCertificate(request, result);
+    SigstoreResult result;
+    if (request.signingCert() == null) {
+      result = ImmutableSigstoreResult.builder().build();
+      result = generateKeyPair(request, result);
+      result = getIDToken(request, result);
+      result = signSubject(request, result);
+      result = retrieveFulcioSigningCertificate(request, result);
+    } else {
+      result = ImmutableSigstoreResult.builder()
+          .keyPair(request.keyPair())
+          .signingCert(request.signingCert())
+          .build();
+    }
     result = saveFulcioSigningCertificateToDisk(request, result);
     result = generateArtifactSignature(request, result);
     return ImmutableSigstoreResult.builder()
@@ -236,9 +244,6 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
             format("Bad response from fulcio @ '%s' : %s", fulcioPostUrl, resp.parseAsString()));
       }
 
-      //String certificateContent = IOUtils.toString(resp.getContent(), UTF_8);
-      //System.out.println(certificateContent);
-
       logger.info("parsing signing certificate");
       CertificateFactory cf = CertificateFactory.getInstance("X.509");
       ArrayList<X509Certificate> certList = new ArrayList<>();
@@ -254,7 +259,8 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       if (certList.isEmpty()) {
         throw new IOException("no certificates were found in response from Fulcio instance");
       }
-      return newResultFrom(result).signingCert(cf.generateCertPath(certList)).build();
+      return newResultFrom(result)
+          .signingCert(cf.generateCertPath(certList)).build();
     } catch (Exception e) {
       throw new Exception(
           format("Error obtaining signing certificate from Fulcio @ %s:",

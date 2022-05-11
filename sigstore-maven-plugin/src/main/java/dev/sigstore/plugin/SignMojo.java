@@ -14,6 +14,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.KeyPair;
+import java.security.cert.CertPath;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
@@ -183,6 +185,8 @@ public class SignMojo extends AbstractMojo {
     // maven-sigstore-test-{{version}}.pom
     // maven-sigstore-test-{{version}}-sources.jar
 
+    KeyPair keyPair = null;
+    CertPath fulcioSigningCert = null;
     logger.debug("Signing the following files sigstore:");
     mavenFilesToSign.forEach(s -> logger.debug(s.toString()));
     List<SignedFile> filesToSignWithPgp = new ArrayList<>();
@@ -190,6 +194,8 @@ public class SignMojo extends AbstractMojo {
       Path file = mavenFileToSign.file();
       try {
         SigstoreRequest request = builder()
+            .keyPair(keyPair)
+            .signingCert(fulcioSigningCert)
             .artifact(file)
             .type(X_509)
             .build();
@@ -202,6 +208,9 @@ public class SignMojo extends AbstractMojo {
         // The sigstore .pem file
         projectHelper.attachArtifact(project, mavenFileToSign.extension() + X509_CERTIFICATE_EXTENSION, mavenFileToSign.classifier(), result.signingCertificate().toFile());
         filesToSignWithPgp.add(new SignedFile(request.outputSigningCert(), mavenFileToSign.extension() + X509_CERTIFICATE_EXTENSION, mavenFileToSign.classifier()));
+        // Let's hold on the signing certificate and reuse as long as we can
+        keyPair = result.keyPair();
+        fulcioSigningCert = result.signingCert();
       } catch (Exception e) {
         throw new MojoExecutionException(e);
       }

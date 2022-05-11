@@ -48,10 +48,7 @@ public abstract class SigstoreResult {
   public abstract String artifactSignatureContent(); // b64
 
   @Nullable
-  public abstract String artifactSigningCertContent();
-
-  @Nullable
-  public abstract CertPath signingCert();
+  public abstract CertPath signingCert(); //fulcioSigningCertificate
 
   @Nullable
   public abstract String publicKeyContent();

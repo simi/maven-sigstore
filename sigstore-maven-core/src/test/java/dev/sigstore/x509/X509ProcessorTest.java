@@ -24,6 +24,9 @@ import dev.sigstore.SigstoreResult;
 import dev.sigstore.SigstoreSigner;
 import dev.sigstore.SigstoreTestSupport;
 import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.cert.CertPath;
+import java.util.List;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -32,15 +35,27 @@ public class X509ProcessorTest extends SigstoreTestSupport {
   @Test
   @Ignore
   public void validateSigning() throws Exception {
-    Path artifact = jarArtifact("test-1.0");
-    SigstoreRequest request = localRequestBuilder()
-        .type(X_509)
-        .artifact(artifact)
-        .build();
-    SigstoreSigner signer = new SigstoreSigner(request);
-    SigstoreResult result = signer.sign();
-
-    assertThat(result.signingCertificate()).isNotNull();
-    assertThat(result.artifactSignature()).isNotNull();
+    KeyPair keyPair = null;
+    CertPath fulcioSigningCert = null;
+    for(String artifactName : List.of("test0", "test1")) {
+      System.out.println("!!! ------------------------------------------------------------------");
+      System.out.println("!!! Signing " + artifactName);
+      System.out.println("!!! ------------------------------------------------------------------");
+      Path artifact = jarArtifact(artifactName);
+      SigstoreRequest request = localRequestBuilder()
+          .keyPair(keyPair)
+          .signingCert(fulcioSigningCert)
+          .type(X_509)
+          .artifact(artifact)
+          .build();
+      SigstoreSigner signer = new SigstoreSigner(request);
+      SigstoreResult result = signer.sign();
+      keyPair = result.keyPair();
+      fulcioSigningCert = result.signingCert();
+      assertThat(keyPair).isNotNull();
+      assertThat(fulcioSigningCert).isNotNull();
+      assertThat(result.signingCertificate()).isNotNull();
+      assertThat(result.artifactSignature()).isNotNull();
+    }
   }
 }

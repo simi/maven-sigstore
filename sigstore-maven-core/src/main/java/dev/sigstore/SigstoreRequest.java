@@ -18,6 +18,8 @@ package dev.sigstore;
 
 import dev.sigstore.ssh.SshRequest;
 import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.cert.CertPath;
 import javax.annotation.Nullable;
 import org.immutables.value.Value;
 
@@ -58,6 +60,12 @@ public abstract class SigstoreRequest {
   public boolean sslVerfication() {
     return true;
   }
+
+  @Nullable
+  public abstract CertPath signingCert();
+
+  @Nullable
+  public abstract KeyPair keyPair();
 
   @Value.Default
   public String fulcioInstanceURL() {

@@ -75,10 +75,6 @@ public class SigstoreSigner {
     return Base64.getEncoder().encodeToString(input);
   }
 
-  public static String base64Mime(byte[] input) {
-    return base64Mime(input, 64);
-  }
-
   public static String base64Mime(byte[] input, int length) {
     final String lineSeparator = System.getProperty("line.separator");
     Base64.Encoder encoder = Base64.getMimeEncoder(length, lineSeparator.getBytes());
@@ -102,20 +98,6 @@ public class SigstoreSigner {
   public static byte[] sha512(byte[] input) throws Exception {
     MessageDigest digest = MessageDigest.getInstance("SHA-512");
     return digest.digest(input);
-  }
-
-  public static String sha512ToHex(byte[] input) throws Exception {
-    MessageDigest digest = MessageDigest.getInstance("SHA-512");
-    byte[] hash = digest.digest(input);
-    StringBuilder hexString = new StringBuilder(2 * hash.length);
-    for (int i = 0; i < hash.length; i++) {
-      String hex = Integer.toHexString(0xff & hash[i]);
-      if (hex.length() == 1) {
-        hexString.append('0');
-      }
-      hexString.append(hex);
-    }
-    return hexString.toString();
   }
 
   public static HttpTransport getHttpTransport(SigstoreRequest request) {
