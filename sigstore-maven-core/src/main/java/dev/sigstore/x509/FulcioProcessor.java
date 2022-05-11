@@ -83,14 +83,16 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
   @Override
   public SigstoreResult process(SigstoreRequest request) throws Exception {
     SigstoreResult result = ImmutableSigstoreResult.builder().build();
-    result = generateKeyPair(request, result);
-    result = getIDToken(request, result);
-    result = signSubject(request, result);
-    result = retrieveFulcioSigningCertificate(request, result);
-    result = saveFulcioSigningCertificateToDisk(request, result);
-    result = generateArtifactSignature(request, result);
-    Map<String, Object> rekord = rekord(request, result);
-    return ImmutableSigstoreResult.builder().from(result).rekorRecord(rekord).build();
+    generateKeyPair(request, result);
+    getIDToken(request, result);
+    signSubject(request, result);
+    retrieveFulcioSigningCertificate(request, result);
+    saveFulcioSigningCertificateToDisk(request, result);
+    generateArtifactSignature(request, result);
+    return ImmutableSigstoreResult.builder()
+        .from(result)
+        .rekorRecord(rekord(request, result))
+        .build();
   }
 
   private SigstoreResult generateKeyPair(SigstoreRequest request, SigstoreResult result) throws Exception {
@@ -232,7 +234,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       HttpResponse resp = req.execute();
       if (resp.getStatusCode() != HTTP_201) {
         throw new IOException(
-            format("bad response from fulcio @ '%s' : %s", fulcioPostUrl, resp.parseAsString()));
+            format("Bad response from fulcio @ '%s' : %s", fulcioPostUrl, resp.parseAsString()));
       }
 
       logger.info("parsing signing certificate");

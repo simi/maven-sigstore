@@ -161,10 +161,10 @@ public class SignMojo extends AbstractMojo {
     try {
       createDirectories(pomToSign.getParentFile().toPath());
       copy(project.getFile().toPath(), pomToSign.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      mavenFilesToSign.add(new SignedFile(pomToSign.toPath(), "pom"));
     } catch (IOException e) {
       throw new MojoExecutionException("Error copying POM for signing.", e);
     }
-    mavenFilesToSign.add(new SignedFile(pomToSign.toPath(), "pom"));
 
     //
     // Attached artifacts
@@ -183,8 +183,8 @@ public class SignMojo extends AbstractMojo {
     // maven-sigstore-test-{{version}}.pom
     // maven-sigstore-test-{{version}}-sources.jar
 
-    logger.info("Signing the following files sigstore:");
-    mavenFilesToSign.forEach(s -> System.out.println(s));
+    logger.debug("Signing the following files sigstore:");
+    mavenFilesToSign.forEach(s -> logger.debug(s.toString()));
     List<SignedFile> filesToSignWithPgp = new ArrayList<>();
     for (SignedFile mavenFileToSign : mavenFilesToSign) {
       Path file = mavenFileToSign.file();
@@ -217,8 +217,8 @@ public class SignMojo extends AbstractMojo {
     // maven-sigstore-test-{{version}}-sources.jar.sig
     // maven-sigstore-test-{{version}}-sources.jar.pem
 
-    logger.info("Signing the following files with PGP:");
-    filesToSignWithPgp.forEach(s -> System.out.println(s));
+    logger.debug("Signing the following files with PGP:");
+    filesToSignWithPgp.forEach(s -> logger.debug(s.toString()));
     for (SignedFile pgpSignedFile : filesToSignWithPgp) {
       Path file = pgpSignedFile.file();
       if (mavenPgpSignatures) {
