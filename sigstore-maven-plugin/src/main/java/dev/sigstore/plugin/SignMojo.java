@@ -29,7 +29,7 @@ import org.apache.maven.project.MavenProjectHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Mojo(name = "sign", defaultPhase = LifecyclePhase.DEPLOY, configurator = "takari", threadSafe = true)
+@Mojo(name = "sign", defaultPhase = LifecyclePhase.INSTALL, configurator = "takari", threadSafe = true)
 public class SignMojo extends AbstractMojo {
 
   public static final String PGP_SIGNATURE_EXTENSION = ".asc";
