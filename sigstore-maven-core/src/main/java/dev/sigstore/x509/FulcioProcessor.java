@@ -237,14 +237,14 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       req.getHeaders().set("Accept", "application/pem-certificate-chain");
       req.getHeaders().set("Authorization", "Bearer " + idToken);
 
-      logger.info("requesting signing certificate");
+      logger.info("Requesting signing certificate");
       HttpResponse resp = req.execute();
       if (resp.getStatusCode() != HTTP_201) {
         throw new IOException(
             format("Bad response from fulcio @ '%s' : %s", fulcioPostUrl, resp.parseAsString()));
       }
 
-      logger.info("parsing signing certificate");
+      logger.info("Parsing signing certificate");
       CertificateFactory cf = CertificateFactory.getInstance("X.509");
       ArrayList<X509Certificate> certList = new ArrayList<>();
       PemReader pemReader = new PemReader(new InputStreamReader(resp.getContent()));
@@ -272,7 +272,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       throws Exception {
     CertPath certs = result.signingCert();
     File outputSigningCert = request.outputSigningCert().toFile();
-    logger.info("writing signing certificate to " + outputSigningCert.getAbsolutePath());
+    logger.info("Writing signing certificate to " + outputSigningCert.getAbsolutePath());
     try {
       final String lineSeparator = System.getProperty("line.separator");
       Encoder encoder = getMimeEncoder(64, lineSeparator.getBytes());

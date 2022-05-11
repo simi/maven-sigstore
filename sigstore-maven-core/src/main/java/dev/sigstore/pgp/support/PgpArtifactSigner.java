@@ -80,19 +80,19 @@ public class PgpArtifactSigner extends PgpSupport {
   private String findPassphrase() throws IOException {
     String passphrase = System.getenv("PGP_PASSPHRASE");
     if (passphrase != null) {
-      logger.info("Found passphrase in envar PGP_PASSPHRASE.");
+      logger.debug("Found passphrase in envar PGP_PASSPHRASE.");
       return passphrase;
     }
 
     passphrase = new FilePassphraseSource(jpgpPassphraseFile).load(secretKey);
     if (passphrase != null) {
-      logger.info("Found passphrase ~/.gnupg/.jpgp.passphrase");
+      logger.debug("Found passphrase ~/.gnupg/.jpgp.passphrase");
       return passphrase;
     }
 
     passphrase = new GpgAgentPassphraseSource().load(secretKey);
     if (passphrase != null) {
-      logger.info("Found passphrase from gpg agent.");
+      logger.debug("Found passphrase from gpg agent.");
       return passphrase;
     }
 
