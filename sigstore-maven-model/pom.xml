@@ -24,7 +24,7 @@ under the License.
   <parent>
     <groupId>ca.vanzyl.sigstore.maven</groupId>
     <artifactId>sigstore-maven</artifactId>
-    <version>0.0.9-SNAPSHOT</version>
+    <version>0.0.9</version>
   </parent>
   <artifactId>sigstore-maven-model</artifactId>
   <packaging>takari-jar</packaging>  
