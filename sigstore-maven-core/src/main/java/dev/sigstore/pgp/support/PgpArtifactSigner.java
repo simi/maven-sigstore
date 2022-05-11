@@ -16,9 +16,9 @@ package dev.sigstore.pgp.support;
 // limitations under the License.
 //
 
-import static dev.sigstore.pgp.support.PgpSupport.DEFAULT_PGP_KEYRING;
-import static dev.sigstore.pgp.support.PgpSupport.jpgpPassphraseFile;
+import static dev.sigstore.pgp.support.IOUtils.process;
 
+import dev.sigstore.pgp.support.key.PgpKeyRingLoader;
 import dev.sigstore.pgp.support.passphrase.FilePassphraseSource;
 import dev.sigstore.pgp.support.passphrase.GpgAgentPassphraseSource;
 import java.io.ByteArrayOutputStream;
@@ -28,21 +28,27 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Iterator;
+import org.bouncycastle.bcpg.ArmoredOutputStream;
+import org.bouncycastle.bcpg.BCPGOutputStream;
+import org.bouncycastle.bcpg.HashAlgorithmTags;
 import org.bouncycastle.openpgp.PGPException;
+import org.bouncycastle.openpgp.PGPPrivateKey;
 import org.bouncycastle.openpgp.PGPSecretKey;
+import org.bouncycastle.openpgp.PGPSignature;
+import org.bouncycastle.openpgp.PGPSignatureGenerator;
+import org.bouncycastle.openpgp.operator.bc.BcPGPContentSignerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PgpArtifactSigner {
+public class PgpArtifactSigner extends PgpSupport {
 
   private static final Logger logger = LoggerFactory.getLogger(PgpArtifactSigner.class);
 
   private final PGPSecretKey secretKey;
-  private final PgpMessageSigner signer;
 
   public PgpArtifactSigner() throws IOException {
     secretKey = new PgpKeyRingLoader().load(DEFAULT_PGP_KEYRING);
-    signer = new PgpMessageSigner();
   }
 
   public File sign(File fileToSign) throws IOException, PGPException {
@@ -55,7 +61,7 @@ public class PgpArtifactSigner {
     }
     File signatureFile = new File(fileToSign.getParentFile(), fileToSign.getName() + ".asc");
     try (InputStream inputStream = new FileInputStream(fileToSign); OutputStream outputStream = new FileOutputStream(signatureFile)) {
-      signer.signMessage(secretKey, passphrase, inputStream, outputStream);
+      signMessage(secretKey, passphrase, inputStream, outputStream);
     }
     return signatureFile;
   }
@@ -66,38 +72,64 @@ public class PgpArtifactSigner {
 
   public String signToString(File fileToSign, String passphrase) throws IOException, PGPException {
     try (InputStream inputStream = new FileInputStream(fileToSign); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-      signer.signMessage(secretKey, passphrase, inputStream, baos);
+      signMessage(secretKey, passphrase, inputStream, baos);
       return baos.toString();
     }
   }
 
   private String findPassphrase() throws IOException {
-
-    logger.info("No passphrase provided so searching with configured loaders:");
-
-    logger.info("Looking for envar PGP_PASSPHRASE for passphrase.");
     String passphrase = System.getenv("PGP_PASSPHRASE");
     if (passphrase != null) {
       logger.info("Found passphrase in envar PGP_PASSPHRASE.");
       return passphrase;
     }
 
-    logger.info("Looking in ~/.gnupg/.jpgp.passphrase for passphrase.");
     passphrase = new FilePassphraseSource(jpgpPassphraseFile).load(secretKey);
     if (passphrase != null) {
       logger.info("Found passphrase ~/.gnupg/.jpgp.passphrase");
       return passphrase;
     }
 
-    logger.info("Asking pgp agent for passphrase.");
     passphrase = new GpgAgentPassphraseSource().load(secretKey);
-    // The only way to know if the passphrase is correct is to attempt using it. We'll
-    // allow 5 retries as that should account for any mistakes adequately. Or does the agent...
     if (passphrase != null) {
       logger.info("Found passphrase from gpg agent.");
       return passphrase;
     }
 
     return passphrase;
+  }
+
+  public boolean signMessage(InputStream privateKeyOfSender, final String userIdForPrivateKey, String passwordOfPrivateKey, InputStream message, OutputStream signature) {
+    try {
+      PGPPrivateKey privateKey = findPrivateKey(privateKeyOfSender, passwordOfPrivateKey, secretKey -> {
+        boolean result = secretKey.isSigningKey();
+        if (result) {
+          Iterator<String> userIdIterator = secretKey.getUserIDs();
+          boolean containsUserId = false;
+          while (userIdIterator.hasNext() && !containsUserId) {
+            containsUserId = userIdForPrivateKey.equals(userIdIterator.next());
+          }
+        }
+        return result;
+      });
+      return signatureGenerator(message, signature, privateKey);
+    } catch (IOException | PGPException e) {
+      return false;
+    }
+  }
+
+  public boolean signMessage(PGPSecretKey secretKey, String passwordOfPrivateKey, InputStream message, OutputStream signature) throws PGPException, IOException {
+    PGPPrivateKey privateKey = findPrivateKey(secretKey, passwordOfPrivateKey);
+    return signatureGenerator(message, signature, privateKey);
+  }
+
+  private boolean signatureGenerator(InputStream message, OutputStream signature, PGPPrivateKey privateKey) throws PGPException, IOException {
+    final PGPSignatureGenerator signatureGenerator = new PGPSignatureGenerator(new BcPGPContentSignerBuilder(privateKey.getPublicKeyPacket().getAlgorithm(), HashAlgorithmTags.SHA256));
+    signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, privateKey);
+    try (BCPGOutputStream outputStream = new BCPGOutputStream(new ArmoredOutputStream(signature))) {
+      process(message, signatureGenerator::update);
+      signatureGenerator.generate().encode(outputStream);
+    }
+    return true;
   }
 }

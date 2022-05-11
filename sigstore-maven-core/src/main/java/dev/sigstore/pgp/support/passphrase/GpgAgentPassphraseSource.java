@@ -16,7 +16,7 @@ package dev.sigstore.pgp.support.passphrase;
 // limitations under the License.
 //
 
-import dev.sigstore.pgp.support.PgpKeyRingLoader;
+import dev.sigstore.pgp.support.key.PgpKeyRingLoader;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;

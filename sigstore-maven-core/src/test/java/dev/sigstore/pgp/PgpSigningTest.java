@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.codehaus.plexus.util.FileUtils.copyDirectoryStructure;
 import static org.junit.Assert.assertTrue;
 
+import dev.sigstore.pgp.support.PgpArtifactSigner;
 import dev.sigstore.pgp.support.PgpKeyPairGenerator;
-import dev.sigstore.pgp.support.PgpKeyRingLoader;
-import dev.sigstore.pgp.support.PgpMessageSigner;
+import dev.sigstore.pgp.support.key.PgpKeyRingLoader;
 import dev.sigstore.pgp.support.PgpMessageVerifier;
 import java.io.File;
 import java.io.FileInputStream;
@@ -40,7 +40,7 @@ public class PgpSigningTest {
 
     PgpKeyRingLoader loader = new PgpKeyRingLoader();
     PGPSecretKey secretKey = loader.load(file("secring.gpg"));
-    PgpMessageSigner signer = new PgpMessageSigner();
+    PgpArtifactSigner signer = new PgpArtifactSigner();
     InputStream message = inputStream("artifact-1.0.jar");
     OutputStream signature = outputStream("artifact-1.0.jar.asc");
     assertThat(signer.signMessage(secretKey, "samuel", message, signature)).isTrue();
@@ -70,12 +70,9 @@ public class PgpSigningTest {
       generator.exportPublicKey(publicKeyStream, keypair);
     }
 
-    // TODO: use the artifact signer in the test
-    //PgpArtifactSigner artifactSigner = new PgpArtifactSigner();
-    //artifactSigner.sign(file(messageName));
 
     // Sign the artifact
-    PgpMessageSigner signer = new PgpMessageSigner();
+    PgpArtifactSigner signer = new PgpArtifactSigner();
     try (
         InputStream privateKeyInputStream = inputStream(privateKeyName);
         InputStream message = inputStream(messageName);

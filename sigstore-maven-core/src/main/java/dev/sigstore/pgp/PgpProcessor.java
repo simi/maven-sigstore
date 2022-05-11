@@ -26,7 +26,7 @@ import dev.sigstore.SigstoreProcessorSupport;
 import dev.sigstore.SigstoreRequest;
 import dev.sigstore.SigstoreResult;
 import dev.sigstore.pgp.support.PgpArtifactSigner;
-import dev.sigstore.pgp.support.PgpKeyRingLoader;
+import dev.sigstore.pgp.support.key.PgpKeyRingLoader;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
