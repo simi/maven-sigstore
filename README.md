@@ -8,6 +8,8 @@
 - Should we use `.crt` for the certificate? (Michael Osipov)
   - https://datatracker.ietf.org/doc/html/rfc7468#section-5.3
   - https://datatracker.ietf.org/doc/html/rfc7468#section-1
+- How do we address cryptography vulnerabilities in the JDK? 
+  - [Psychic Signatures](https://neilmadden.blog/2022/04/19/psychic-signatures-in-java) 
 
 ## Process of generating signatures
 
