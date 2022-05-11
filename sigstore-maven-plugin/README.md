@@ -6,7 +6,7 @@ A Maven plugin that can be used for keyless Sigstore signing. This plugin also a
 
 In this mode, you disable any PGP signing you have in your current build, and let the `sigstore-maven-plugin` do the PGP signing along with the Sigstore signing. The PGP implementation in the plugin doesn't require the GPG executable on your machine, and in default mode it will use the default key in your local keyring. In this way the management of shedding PGP signing can be managed in one place.
 
-```
+```xml
 <project>
   <modelVersion>4.0.0</modelVersion>
   <parent>
@@ -47,6 +47,7 @@ In this mode, you disable any PGP signing you have in your current build, and le
     </profile>
   </profiles>
 </project>
+```
 
 When the release is made to Maven Central it will have all the necessary signatures, and for the time being the Sigstore signatures are signed with PGP to allow this hybrid mode of signing to work with no changes required in Maven Central.
 
