@@ -10,6 +10,7 @@
   - https://datatracker.ietf.org/doc/html/rfc7468#section-1
 - How do we address cryptography vulnerabilities in the JDK? 
   - [Psychic Signatures](https://neilmadden.blog/2022/04/19/psychic-signatures-in-java) 
+- Do we need a piece of metadata to at least describe a revision of the layout? So that tooling that might process all the entries can know about different versions along the way and deal with them accordingly if issue are found retroactively.
 
 ## Process of generating signatures
 
