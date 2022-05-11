@@ -24,6 +24,7 @@ import static dev.sigstore.SigstoreSigner.base64;
 import static dev.sigstore.SigstoreSigner.getHttpTransport;
 import static dev.sigstore.SigstoreSigner.newResultFrom;
 import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.writeString;
 import static java.util.Base64.Encoder;
 import static java.util.Base64.getEncoder;
@@ -56,7 +57,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InvalidObjectException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -83,12 +83,12 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
   @Override
   public SigstoreResult process(SigstoreRequest request) throws Exception {
     SigstoreResult result = ImmutableSigstoreResult.builder().build();
-    generateKeyPair(request, result);
-    getIDToken(request, result);
-    signSubject(request, result);
-    retrieveFulcioSigningCertificate(request, result);
-    saveFulcioSigningCertificateToDisk(request, result);
-    generateArtifactSignature(request, result);
+    result = generateKeyPair(request, result);
+    result = getIDToken(request, result);
+    result = signSubject(request, result);
+    result = retrieveFulcioSigningCertificate(request, result);
+    result = saveFulcioSigningCertificateToDisk(request, result);
+    result = generateArtifactSignature(request, result);
     return ImmutableSigstoreResult.builder()
         .from(result)
         .rekorRecord(rekord(request, result))
@@ -203,8 +203,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
     }
   }
 
-  private SigstoreResult retrieveFulcioSigningCertificate(SigstoreRequest request, SigstoreResult result)
-      throws Exception {
+  private SigstoreResult retrieveFulcioSigningCertificate(SigstoreRequest request, SigstoreResult result) throws Exception {
     PublicKey pubKey = result.keyPair().getPublic();
     String signedEmail = result.signedEmailAddress();
     String idToken = result.rawIdToken();
@@ -236,6 +235,9 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
         throw new IOException(
             format("Bad response from fulcio @ '%s' : %s", fulcioPostUrl, resp.parseAsString()));
       }
+
+      //String certificateContent = IOUtils.toString(resp.getContent(), UTF_8);
+      //System.out.println(certificateContent);
 
       logger.info("parsing signing certificate");
       CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -273,7 +275,7 @@ public class FulcioProcessor extends SigstoreProcessorSupport {
       String encodedCertText = new String(encoder.encode(rawCrtText));
       String prettifiedCert = "-----BEGIN CERTIFICATE-----" + lineSeparator + encodedCertText + lineSeparator
           + "-----END CERTIFICATE-----";
-      String b64PublicKey = base64(prettifiedCert.getBytes(StandardCharsets.UTF_8));
+      String b64PublicKey = base64(prettifiedCert.getBytes(UTF_8));
       writeString(outputSigningCert.toPath(), prettifiedCert);
       return newResultFrom(result).publicKeyContent(b64PublicKey).build();
     } catch (Exception e) {
